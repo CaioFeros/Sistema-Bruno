@@ -29,16 +29,53 @@ Sistema desktop em Python para extrair dados de recibos de venda de PDFs e expor
 
 ## Instalação
 
-1. Clone o repositório:
+### Pré-requisitos
+
+- **Python 3.8 ou superior** (recomendado: Python 3.11+)
+- **Git** (para clonar o repositório) - [Download](https://git-scm.com/downloads)
+
+### Passos de Instalação
+
+1. **Clone o repositório:**
 ```bash
-git clone https://github.com/seu-usuario/Sistema-Bruno.git
+git clone https://github.com/CaioFeros/Sistema-Bruno.git
 cd Sistema-Bruno
 ```
 
-2. Instale as dependências:
+2. **Instale as dependências:**
 ```bash
 pip install -r requirements.txt
 ```
+
+Se estiver usando Python 3, pode ser necessário usar `pip3`:
+```bash
+pip3 install -r requirements.txt
+```
+
+**Nota para Windows:** Se encontrar problemas, tente:
+```bash
+python -m pip install -r requirements.txt
+```
+
+### Verificação da Instalação
+
+Para verificar se tudo está instalado corretamente:
+```bash
+python --version  # Deve mostrar Python 3.8 ou superior
+pip list  # Deve mostrar pdfplumber, pandas, openpyxl na lista
+```
+
+### Problemas Comuns
+
+**tkinter não encontrado:**
+- **Windows:** Geralmente já vem instalado com Python
+- **Linux (Ubuntu/Debian):** `sudo apt-get install python3-tk`
+- **Mac:** Geralmente já vem instalado com Python
+
+**tkinterdnd2 não instala:**
+- Este pacote é opcional (drag and drop)
+- O programa funciona sem ele, apenas sem a funcionalidade de arrastar arquivos
+- Em Windows, pode precisar: `pip install tkinterdnd2`
 
 ## Uso
 
@@ -79,12 +116,28 @@ python main.py
 
 ## Requisitos
 
-- Python 3.8+
-- tkinter (geralmente incluído no Python)
-- pdfplumber
-- pandas
-- openpyxl
-- tkinterdnd2 (opcional, para drag and drop)
+### Sistemas Operacionais Suportados
+- ✅ Windows 10/11
+- ✅ Linux (Ubuntu, Debian, etc.)
+- ✅ macOS
+
+### Dependências Python
+- **Python 3.8 ou superior** (recomendado: 3.11+)
+- **pdfplumber** (>=0.10.0) - Extração de texto de PDFs
+- **pandas** (>=2.0.0) - Manipulação de dados
+- **openpyxl** (>=3.1.0) - Exportação para Excel
+- **tkinter** - Interface gráfica (geralmente incluído no Python)
+- **tkinterdnd2** (>=0.3.0) - Drag and drop (opcional)
+
+### Instalação Rápida de Todas as Dependências
+```bash
+pip install pdfplumber pandas openpyxl tkinterdnd2
+```
+
+Ou usando o arquivo requirements.txt:
+```bash
+pip install -r requirements.txt
+```
 
 ## Características Técnicas
 
