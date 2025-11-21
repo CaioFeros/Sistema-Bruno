@@ -15,14 +15,14 @@ def verificar_python():
     print()
     
     versao = sys.version_info
-    print(f"✓ Python {versao.major}.{versao.minor}.{versao.micro} encontrado")
+    print(f"[OK] Python {versao.major}.{versao.minor}.{versao.micro} encontrado")
     
     if versao.major < 3 or (versao.major == 3 and versao.minor < 8):
-        print("✗ ERRO: Python 3.8 ou superior é necessário!")
-        print(f"  Versão atual: {versao.major}.{versao.minor}")
+        print("[X] ERRO: Python 3.8 ou superior e necessario!")
+        print(f"  Versao atual: {versao.major}.{versao.minor}")
         return False
     else:
-        print("  Versão compatível!")
+        print("  Versao compativel!")
         return True
 
 def verificar_dependencias():
@@ -46,20 +46,20 @@ def verificar_dependencias():
         try:
             if modulo == 'tkinter':
                 import tkinter
+                print(f"[OK] {modulo:15} - {descricao}")
             elif modulo == 'tkinterdnd2':
                 try:
                     import tkinterdnd2
-                    print(f"✓ {modulo:15} - {descricao}")
+                    print(f"[OK] {modulo:15} - {descricao}")
                 except ImportError:
-                    print(f"⚠ {modulo:15} - {descricao} (OPCIONAL - não instalado)")
+                    print(f"[--] {modulo:15} - {descricao} (OPCIONAL - nao instalado)")
                     opcionais_ok = False
                     continue
             else:
                 __import__(modulo)
-            
-            print(f"✓ {modulo:15} - {descricao}")
+                print(f"[OK] {modulo:15} - {descricao}")
         except ImportError:
-            print(f"✗ {modulo:15} - {descricao} (NÃO INSTALADO)")
+            print(f"[X] {modulo:15} - {descricao} (NAO INSTALADO)")
             if modulo != 'tkinterdnd2':
                 todas_ok = False
     
@@ -86,9 +86,9 @@ def verificar_arquivos():
     
     for arquivo in arquivos_necessarios:
         if os.path.exists(arquivo):
-            print(f"✓ {arquivo}")
+            print(f"[OK] {arquivo}")
         else:
-            print(f"✗ {arquivo} (NÃO ENCONTRADO)")
+            print(f"[X] {arquivo} (NAO ENCONTRADO)")
             todos_presentes = False
     
     print("-" * 60)
@@ -108,7 +108,7 @@ def main():
     if not deps_ok:
         resultado_geral = False
         print()
-        print("⚠ ATENÇÃO: Algumas dependências não estão instaladas!")
+        print("[!] ATENCAO: Algumas dependencias nao estao instaladas!")
         print("  Execute: pip install -r requirements.txt")
     
     # Verificar arquivos
@@ -116,24 +116,24 @@ def main():
     if not arquivos_ok:
         resultado_geral = False
         print()
-        print("⚠ ATENÇÃO: Alguns arquivos do programa não foram encontrados!")
+        print("[!] ATENCAO: Alguns arquivos do programa nao foram encontrados!")
     
     # Resultado final
     print()
     print("=" * 60)
     if resultado_geral:
-        print("✓ TUDO OK! O programa está pronto para ser executado.")
+        print("[OK] TUDO OK! O programa esta pronto para ser executado.")
         print()
         print("Para executar o programa, use:")
         print("  python run.py")
         print("  ou")
         print("  python main.py")
     else:
-        print("✗ ERROS ENCONTRADOS!")
+        print("[X] ERROS ENCONTRADOS!")
         print()
         print("Corrija os erros acima antes de executar o programa.")
         print()
-        print("Para instalar as dependências:")
+        print("Para instalar as dependencias:")
         print("  pip install -r requirements.txt")
     
     print("=" * 60)
@@ -146,6 +146,6 @@ if __name__ == "__main__":
         sucesso = main()
         sys.exit(0 if sucesso else 1)
     except Exception as e:
-        print(f"\n✗ ERRO durante a verificação: {e}")
+        print(f"\n[X] ERRO durante a verificacao: {e}")
         sys.exit(1)
 
