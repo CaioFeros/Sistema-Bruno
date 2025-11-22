@@ -200,6 +200,26 @@ def main():
     try:
         # Testar importações críticas primeiro
         if is_standalone:
+            # Debug: mostrar sys.path para diagnóstico
+            print("sys.path configurado:")
+            for i, path in enumerate(sys.path[:5]):
+                print(f"  [{i}] {path}")
+            if len(sys.path) > 5:
+                print(f"  ... e mais {len(sys.path) - 5} caminhos")
+            print()
+            
+            # Verificar se pdfplumber está acessível
+            import importlib.util
+            pdfplumber_found = False
+            for path in sys.path:
+                pdfplumber_path = os.path.join(path, 'pdfplumber')
+                if os.path.exists(pdfplumber_path) or os.path.exists(pdfplumber_path + '.py'):
+                    print(f"pdfplumber encontrado em: {path}")
+                    pdfplumber_found = True
+                    break
+            if not pdfplumber_found:
+                print("AVISO: pdfplumber nao encontrado em nenhum caminho do sys.path")
+            print()
             print("Testando importações críticas...")
             try:
                 import numpy
