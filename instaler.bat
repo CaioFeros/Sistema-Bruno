@@ -35,6 +35,23 @@ python -m PyInstaller ^
     --icon=NONE ^
     --hidden-import=pandas ^
     --hidden-import=numpy ^
+    --hidden-import=numpy.core ^
+    --hidden-import=numpy.core._multiarray_umath ^
+    --hidden-import=numpy.core.multiarray ^
+    --hidden-import=numpy.core.umath ^
+    --hidden-import=numpy.linalg ^
+    --hidden-import=numpy.linalg.lapack_lite ^
+    --hidden-import=numpy.linalg._umath_linalg ^
+    --hidden-import=numpy.random ^
+    --hidden-import=numpy.random.mtrand ^
+    --hidden-import=numpy.random._common ^
+    --hidden-import=numpy.random.bit_generator ^
+    --hidden-import=numpy.random._generator ^
+    --hidden-import=numpy.fft ^
+    --hidden-import=numpy.ma ^
+    --hidden-import=numpy.ma.core ^
+    --hidden-import=numpy.compat ^
+    --hidden-import=numpy.compat.py3k ^
     --hidden-import=pandas._libs ^
     --hidden-import=pandas._libs.tslibs.timedeltas ^
     --hidden-import=pandas._libs.tslibs.nattype ^
@@ -91,6 +108,8 @@ python -m PyInstaller ^
     --collect-submodules=numpy ^
     --collect-data=pandas ^
     --collect-data=numpy ^
+    --collect-binaries=numpy ^
+    --collect-binaries=pandas ^
     --noconfirm ^
     iniciar_sistema.py
 
