@@ -56,3 +56,8 @@ dist/
 __pycache__/
 *.pyc
 
+# Arquivos de distribuicao (publicar apenas em Releases do GitHub)
+Sistema-Bruno-Distribuicao/
+Sistema-Bruno-Distribuicao.zip
+*.exe
+
