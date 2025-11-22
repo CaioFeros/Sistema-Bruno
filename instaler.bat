@@ -38,6 +38,7 @@ python -m PyInstaller ^
     --name="setup" ^
     --windowed ^
     --icon=NONE ^
+    --additional-hooks-dir=hooks ^
     --hidden-import=pandas ^
     --hidden-import=numpy ^
     --hidden-import=numpy.core ^
