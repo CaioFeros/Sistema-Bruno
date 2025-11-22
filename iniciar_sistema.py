@@ -163,8 +163,46 @@ def main():
     
     # Importar e executar o programa principal
     try:
+        # Testar importações críticas primeiro
+        if is_standalone:
+            try:
+                import pandas as pd
+            except ImportError as e:
+                import tkinter.messagebox as msgbox
+                msgbox.showerror("Erro de Dependência", 
+                    f"Erro ao carregar pandas:\n\n{str(e)}\n\n"
+                    "O executável pode estar corrompido ou incompleto.\n"
+                    "Por favor, gere um novo executável usando instaler.bat")
+                sys.exit(1)
+        
         from main import main as main_app
         main_app()
+    except ImportError as e:
+        if is_standalone:
+            # Em standalone, mostrar erro mais amigável
+            import tkinter.messagebox as msgbox
+            try:
+                error_msg = str(e)
+                if 'pandas' in error_msg.lower():
+                    msgbox.showerror("Erro de Dependência", 
+                        f"Erro ao carregar pandas:\n\n{error_msg}\n\n"
+                        "O executável pode estar incompleto.\n"
+                        "Por favor, gere um novo executável usando instaler.bat")
+                else:
+                    msgbox.showerror("Erro ao Iniciar", 
+                        f"Ocorreu um erro ao iniciar o sistema:\n\n{error_msg}\n\n"
+                        "Por favor, entre em contato com o suporte.")
+            except:
+                # Se tkinter não funcionar, usar print
+                print(f"\nERRO ao iniciar o sistema: {e}")
+                input("\nPressione Enter para sair...")
+        else:
+            print(f"\nERRO ao iniciar o sistema: {e}")
+            print("\nDetalhes tecnicos:")
+            import traceback
+            traceback.print_exc()
+            input("\nPressione Enter para sair...")
+        sys.exit(1)
     except Exception as e:
         if is_standalone:
             # Em standalone, mostrar erro mais amigável

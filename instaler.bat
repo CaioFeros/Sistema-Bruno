@@ -35,13 +35,25 @@ python -m PyInstaller ^
     --icon=NONE ^
     --hidden-import=pdfplumber ^
     --hidden-import=pandas ^
+    --hidden-import=numpy ^
     --hidden-import=openpyxl ^
     --hidden-import=tkinter ^
     --hidden-import=tkinterdnd2 ^
+    --hidden-import=pandas._libs ^
+    --hidden-import=pandas._libs.tslibs.timedeltas ^
+    --hidden-import=pandas._libs.tslibs.nattype ^
+    --hidden-import=pandas._libs.tslibs.np_datetime ^
+    --hidden-import=pandas._libs.skiplist ^
+    --hidden-import=pytz ^
+    --hidden-import=dateutil ^
+    --hidden-import=dateutil.parser ^
     --collect-all=pdfplumber ^
     --collect-all=openpyxl ^
     --collect-all=pandas ^
+    --collect-all=numpy ^
     --collect-all=tkinter ^
+    --collect-submodules=pandas ^
+    --collect-submodules=numpy ^
     --noconfirm ^
     iniciar_sistema.py
 
