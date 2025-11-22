@@ -51,8 +51,8 @@ set SCRIPT_DIR=%~dp0
 set DESKTOP=%USERPROFILE%\Desktop
 set SHORTCUT=%DESKTOP%\Sistema Bruno.lnk
 
-REM Usar PowerShell para criar atalho
-powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%SHORTCUT%'); $Shortcut.TargetPath = 'python'; $Shortcut.Arguments = '\"%~dp0main.py\"'; $Shortcut.WorkingDirectory = '%SCRIPT_DIR%'; $Shortcut.IconLocation = 'python.exe,0'; $Shortcut.Description = 'Sistema de Extracao de Recibos PDF'; $Shortcut.Save()"
+REM Usar PowerShell para criar atalho (usar iniciar_sistema.py para verificacoes automaticas)
+powershell -Command "$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%SHORTCUT%'); $Shortcut.TargetPath = 'python'; $Shortcut.Arguments = '\"%~dp0iniciar_sistema.py\"'; $Shortcut.WorkingDirectory = '%SCRIPT_DIR%'; $Shortcut.IconLocation = 'python.exe,0'; $Shortcut.Description = 'Sistema de Extracao de Recibos PDF'; $Shortcut.Save()"
 
 if %ERRORLEVEL% EQU 0 (
     echo [OK] Atalho criado na area de trabalho
@@ -67,9 +67,10 @@ echo ========================================
 echo.
 echo O sistema esta pronto para uso!
 echo.
-echo Voce pode executar de duas formas:
+echo Voce pode executar de tres formas:
 echo   1. Clique duas vezes no atalho "Sistema Bruno" na area de trabalho
-echo   2. Execute: python main.py
+echo   2. Execute: python iniciar_sistema.py (recomendado - faz verificacoes automaticas)
+echo   3. Execute: python main.py
 echo.
 pause
 

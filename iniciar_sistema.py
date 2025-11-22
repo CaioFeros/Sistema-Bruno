@@ -128,7 +128,8 @@ def verificar_arquivos():
         'main.py',
         'pdf_extractor.py',
         'data_processor.py',
-        'excel_exporter.py'
+        'excel_exporter.py',
+        'logger.py'
     ]
     
     arquivos_faltando = []

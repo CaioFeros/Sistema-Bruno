@@ -15,6 +15,7 @@ copy main.py Sistema-Bruno-Distribuicao\
 copy pdf_extractor.py Sistema-Bruno-Distribuicao\
 copy data_processor.py Sistema-Bruno-Distribuicao\
 copy excel_exporter.py Sistema-Bruno-Distribuicao\
+copy logger.py Sistema-Bruno-Distribuicao\
 copy iniciar_sistema.py Sistema-Bruno-Distribuicao\
 copy requirements.txt Sistema-Bruno-Distribuicao\
 copy instalar_sistema.bat Sistema-Bruno-Distribuicao\

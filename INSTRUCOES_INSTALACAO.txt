@@ -21,6 +21,7 @@ INSTALAÇÃO SIMPLES - 3 PASSOS
 3. USAR O SISTEMA
    
    - Clique duas vezes no atalho "Sistema Bruno" na área de trabalho
+   - OU execute: python iniciar_sistema.py (recomendado - faz verificações automáticas)
    - OU execute: python main.py
 
 ========================================
