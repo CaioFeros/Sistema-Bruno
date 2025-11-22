@@ -29,10 +29,15 @@ hiddenimports += [
 try:
     import pdfplumber
     pdfplumber_path = os.path.dirname(pdfplumber.__file__)
-    # Adicionar o diretório do pdfplumber como dados para garantir inclusão
-    datas.append((pdfplumber_path, 'pdfplumber'))
-except:
-    pass
+    # Adicionar todos os arquivos do diretório pdfplumber
+    for root, dirs, files in os.walk(pdfplumber_path):
+        for file in files:
+            if file.endswith(('.py', '.pyc', '.pyd')):
+                file_path = os.path.join(root, file)
+                rel_path = os.path.relpath(file_path, os.path.dirname(pdfplumber_path))
+                datas.append((file_path, os.path.join('pdfplumber', os.path.dirname(rel_path))))
+except Exception as e:
+    print(f"AVISO hook-pdfplumber: Erro ao coletar diretório: {e}")
 
 print(f"hook-pdfplumber: Coletando {len(binaries)} binarios, {len(hiddenimports)} imports, {len(datas)} arquivos de dados")
 
