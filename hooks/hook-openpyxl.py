@@ -1,5 +1,6 @@
 # Hook personalizado para garantir que todas as dependências do openpyxl sejam incluídas
 from PyInstaller.utils.hooks import collect_dynamic_libs, collect_submodules, collect_data_files
+import os
 
 # Coletar todas as DLLs dinâmicas do openpyxl
 binaries = collect_dynamic_libs('openpyxl')
@@ -13,6 +14,21 @@ datas = collect_data_files('openpyxl')
 # Adicionar explicitamente o módulo principal
 if 'openpyxl' not in hiddenimports:
     hiddenimports.append('openpyxl')
+
+# IMPORTANTE: Garantir que o próprio pacote openpyxl seja incluído
+try:
+    import openpyxl
+    openpyxl_path = os.path.dirname(openpyxl.__file__)
+    # Adicionar o diretório do openpyxl como dados para garantir inclusão
+    for root, dirs, files in os.walk(openpyxl_path):
+        for file in files:
+            if file.endswith(('.py', '.pyc', '.pyd')):
+                file_path = os.path.join(root, file)
+                rel_path = os.path.relpath(file_path, os.path.dirname(openpyxl_path))
+                target_dir = os.path.join('openpyxl', os.path.dirname(rel_path)) if os.path.dirname(rel_path) else 'openpyxl'
+                datas.append((file_path, target_dir))
+except Exception as e:
+    print(f"AVISO hook-openpyxl: Erro ao coletar diretório: {e}")
 
 # Adicionar submódulos importantes
 hiddenimports += [
