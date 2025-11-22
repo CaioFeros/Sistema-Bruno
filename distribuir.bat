@@ -32,6 +32,22 @@ REM Copiar INSTALACAO.md
 copy INSTALACAO.md Sistema-Bruno-Distribuicao\
 echo [OK] INSTALACAO.md copiado
 
+REM Copiar LER_PRIMEIRO.txt
+copy LER_PRIMEIRO.txt Sistema-Bruno-Distribuicao\
+echo [OK] LER_PRIMEIRO.txt copiado
+
+REM Copiar README_EXECUTAVEL.md
+copy README_EXECUTAVEL.md Sistema-Bruno-Distribuicao\
+echo [OK] README_EXECUTAVEL.md copiado
+
+REM Copiar arquivos principais do sistema (caso o executavel nao funcione)
+copy main.py Sistema-Bruno-Distribuicao\
+copy pdf_extractor.py Sistema-Bruno-Distribuicao\
+copy data_processor.py Sistema-Bruno-Distribuicao\
+copy excel_exporter.py Sistema-Bruno-Distribuicao\
+copy run.py Sistema-Bruno-Distribuicao\
+echo [OK] Arquivos do sistema copiados
+
 echo.
 echo ========================================
 echo Criando ZIP para distribuicao...

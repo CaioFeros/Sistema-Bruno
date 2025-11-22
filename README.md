@@ -77,7 +77,19 @@ pip list  # Deve mostrar pdfplumber, pandas, openpyxl na lista
 - O programa funciona sem ele, apenas sem a funcionalidade de arrastar arquivos
 - Em Windows, pode precisar: `pip install tkinterdnd2`
 
-## Uso
+## 🚀 Uso Rápido
+
+### Opção 1: Executável (Recomendado para Usuários)
+
+1. Baixe o ZIP do repositório ou da [página de Releases](https://github.com/CaioFeros/Sistema-Bruno/releases)
+2. Extraia o ZIP em uma pasta
+3. Clique duas vezes em `Sistema-Bruno.exe`
+4. O sistema verificará e instalará dependências automaticamente
+5. Aguarde a instalação (primeira vez apenas)
+
+📖 **Guia completo do executável**: Veja `README_EXECUTAVEL.md`
+
+### Opção 2: Código Fonte (Para Desenvolvedores)
 
 ### Executar o sistema:
 
