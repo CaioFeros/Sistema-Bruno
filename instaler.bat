@@ -119,7 +119,10 @@ if %ERRORLEVEL% EQU 0 (
     echo SUCESSO! Executavel criado!
     echo ========================================
     echo.
-    echo O executavel esta em: dist\setup.exe
+    echo A pasta com o executavel esta em: dist\setup
+    echo O executavel principal e: dist\setup\setup.exe
+    echo.
+    echo IMPORTANTE: Mantenha toda a pasta "setup" junta ao distribuir!
     echo.
     echo Pronto para distribuir!
     echo.
