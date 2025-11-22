@@ -132,7 +132,19 @@ def main():
     
     if is_standalone:
         # Se estiver rodando como executável standalone
-        os.chdir(os.path.dirname(sys.executable))
+        # Quando não é --onefile, o executável está na pasta e as dependências em _internal
+        if hasattr(sys, '_MEIPASS'):
+            # Modo --onefile (temporário)
+            base_path = sys._MEIPASS
+        else:
+            # Modo pasta (sem --onefile)
+            base_path = os.path.dirname(sys.executable)
+            # Adicionar _internal ao path se existir
+            internal_path = os.path.join(base_path, '_internal')
+            if os.path.exists(internal_path):
+                sys.path.insert(0, internal_path)
+        
+        os.chdir(base_path)
         # Standalone já tem tudo embutido, pular verificações
         print("Iniciando sistema...")
         print()
