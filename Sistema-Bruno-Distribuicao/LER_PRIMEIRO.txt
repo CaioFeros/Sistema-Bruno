@@ -1,0 +1,49 @@
+========================================
+SISTEMA DE EXTRACAO DE RECIBOS PDF
+========================================
+
+COMO USAR:
+----------
+
+1. Dê DUPLO CLIQUE no arquivo "Sistema-Bruno.exe"
+
+2. Na primeira execução, o sistema irá:
+   - Verificar se Python está instalado
+   - Verificar se as dependências estão instaladas
+   - Instalar automaticamente as dependências necessárias (se possível)
+
+3. Após a instalação inicial, o sistema abrirá automaticamente
+
+REQUISITOS:
+-----------
+
+- Windows 10 ou superior
+- Python 3.8 ou superior instalado
+  (Download: https://www.python.org/downloads/)
+
+IMPORTANTE:
+-----------
+
+Se o sistema mostrar erros:
+1. Verifique se Python está instalado
+2. Instale manualmente as dependências:
+   - Abra o Prompt de Comando
+   - Execute: pip install -r requirements.txt
+
+ARQUIVOS NECESSARIOS:
+---------------------
+
+Certifique-se de que todos os arquivos estão na mesma pasta:
+- Sistema-Bruno.exe
+- requirements.txt
+- (Outros arquivos se houver)
+
+CONTATO:
+--------
+
+Para problemas ou dúvidas, consulte:
+- README.md
+- INSTALACAO.md
+
+========================================
+
