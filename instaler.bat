@@ -119,6 +119,7 @@ python -m PyInstaller ^
     --collect-submodules=pdfminer ^
     --collect-all=openpyxl ^
     --collect-all=pandas ^
+    --collect-data=openpyxl ^
     --collect-all=numpy ^
     --collect-all=tkinter ^
     --collect-all=pytz ^
