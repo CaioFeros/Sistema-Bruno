@@ -30,9 +30,9 @@ REM Criar executavel standalone completo com todas as dependencias embutidas
 REM Usando --collect-all e --collect-submodules para garantir que tudo seja incluido
 REM NAO usando --onefile para evitar problemas com bibliotecas C (numpy/pandas)
 
-REM Atualizar PyInstaller e numpy para versoes mais recentes
-echo Atualizando PyInstaller e numpy para versoes mais recentes...
-python -m pip install --upgrade pyinstaller numpy pandas --quiet
+REM Atualizar PyInstaller e dependencias para versoes mais recentes
+echo Atualizando PyInstaller e dependencias para versoes mais recentes...
+python -m pip install --upgrade pyinstaller numpy pandas pdfplumber --quiet
 
 python -m PyInstaller ^
     --name="setup" ^

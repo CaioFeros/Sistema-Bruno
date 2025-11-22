@@ -1,5 +1,6 @@
 # Hook personalizado para garantir que todas as dependências do pdfplumber sejam incluídas
-from PyInstaller.utils.hooks import collect_dynamic_libs, collect_submodules, collect_data_files, collect_all
+from PyInstaller.utils.hooks import collect_dynamic_libs, collect_submodules, collect_data_files
+import os
 
 # Coletar todas as DLLs dinâmicas do pdfplumber
 binaries = collect_dynamic_libs('pdfplumber')
@@ -23,12 +24,13 @@ hiddenimports += [
     'pdfplumber.utils',
 ]
 
-# Coletar dependências do pdfplumber (pdfminer, etc)
+# IMPORTANTE: Garantir que o próprio pacote pdfplumber seja incluído
+# Isso força o PyInstaller a incluir o diretório completo do pdfplumber
 try:
-    pdfminer_binaries, pdfminer_hidden, pdfminer_datas = collect_all('pdfminer.six')
-    binaries += pdfminer_binaries
-    hiddenimports += pdfminer_hidden
-    datas += pdfminer_datas
+    import pdfplumber
+    pdfplumber_path = os.path.dirname(pdfplumber.__file__)
+    # Adicionar o diretório do pdfplumber como dados para garantir inclusão
+    datas.append((pdfplumber_path, 'pdfplumber'))
 except:
     pass
 
