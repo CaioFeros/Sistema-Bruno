@@ -95,6 +95,14 @@ python -m PyInstaller ^
     --hidden-import=pandas._libs.properties ^
     --hidden-import=pandas._libs.ops_dispatch ^
     --hidden-import=pdfplumber ^
+    --hidden-import=pdfplumber.cli ^
+    --hidden-import=pdfplumber.ctm ^
+    --hidden-import=pdfplumber.display ^
+    --hidden-import=pdfplumber.layout ^
+    --hidden-import=pdfplumber.page ^
+    --hidden-import=pdfplumber.pdf ^
+    --hidden-import=pdfplumber.table ^
+    --hidden-import=pdfplumber.utils ^
     --hidden-import=openpyxl ^
     --hidden-import=tkinter ^
     --hidden-import=tkinterdnd2 ^
