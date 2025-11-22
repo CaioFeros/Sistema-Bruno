@@ -1,0 +1,40 @@
+========================================
+SISTEMA DE EXTRAÇÃO DE RECIBOS PDF
+========================================
+
+COMO USAR:
+----------
+
+1. Dê DUPLO CLIQUE no arquivo "setup.exe"
+
+2. O programa abrirá automaticamente
+
+3. Para processar um PDF:
+   - Clique em "Selecionar PDF" e escolha seu arquivo
+   - OU arraste o arquivo PDF para a área de upload
+   - Clique em "Processar PDF"
+   - Aguarde o processamento
+
+4. Visualize os dados extraídos na tabela
+
+5. Para exportar:
+   - Clique em "Exportar para Excel"
+   - Escolha onde salvar o arquivo
+   - Pronto! Seu Excel estará salvo
+
+6. Para processar outro PDF:
+   - Clique em "Limpar Dados"
+   - Repita os passos acima
+
+========================================
+
+OBSERVAÇÕES:
+-----------
+
+- O programa funciona sozinho, não precisa instalar nada
+- Funciona em Windows 10 ou superior
+- Não é necessário ter Python instalado
+- Basta copiar o arquivo .exe para qualquer computador e executar
+
+========================================
+

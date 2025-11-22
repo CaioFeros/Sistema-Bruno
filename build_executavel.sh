@@ -25,7 +25,7 @@ echo ""
 
 # Criar o executável com PyInstaller
 python3 -m PyInstaller \
-    --name="Sistema-Bruno" \
+    --name="setup" \
     --onefile \
     --windowed \
     --add-data "requirements.txt:." \
@@ -44,7 +44,7 @@ if [ $? -eq 0 ]; then
     echo "SUCESSO! Executável criado!"
     echo "========================================"
     echo ""
-    echo "O executável está em: dist/Sistema-Bruno"
+    echo "O executável está em: dist/setup"
     echo ""
     echo "Pronto para distribuir!"
     echo ""

@@ -128,44 +128,61 @@ def verificar_arquivos():
 def main():
     """Função principal de inicialização."""
     # Mudar para o diretório do script
-    if getattr(sys, 'frozen', False):
-        # Se estiver rodando como executável
+    is_standalone = getattr(sys, 'frozen', False)
+    
+    if is_standalone:
+        # Se estiver rodando como executável standalone
         os.chdir(os.path.dirname(sys.executable))
+        # Standalone já tem tudo embutido, pular verificações
+        print("Iniciando sistema...")
+        print()
     else:
-        # Se estiver rodando como script
+        # Se estiver rodando como script Python
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    
-    print("=" * 60)
-    print("Sistema de Extracao de Recibos PDF")
-    print("Verificando dependencias...")
-    print("=" * 60)
-    print()
-    
-    # Verificar Python
-    if not verificar_python():
-        sys.exit(1)
-    
-    # Verificar arquivos
-    if not verificar_arquivos():
-        sys.exit(1)
-    
-    # Verificar e instalar dependências automaticamente
-    if not verificar_e_instalar_dependencias():
-        sys.exit(1)
-    
-    print("Tudo OK! Iniciando o sistema...")
-    print()
+        
+        print("=" * 60)
+        print("Sistema de Extracao de Recibos PDF")
+        print("Verificando dependencias...")
+        print("=" * 60)
+        print()
+        
+        # Verificar Python apenas se não for standalone
+        if not verificar_python():
+            sys.exit(1)
+        
+        # Verificar arquivos apenas se não for standalone
+        if not verificar_arquivos():
+            sys.exit(1)
+        
+        # Verificar e instalar dependências automaticamente apenas se não for standalone
+        if not verificar_e_instalar_dependencias():
+            sys.exit(1)
+        
+        print("Tudo OK! Iniciando o sistema...")
+        print()
     
     # Importar e executar o programa principal
     try:
         from main import main as main_app
         main_app()
     except Exception as e:
-        print(f"\nERRO ao iniciar o sistema: {e}")
-        print("\nDetalhes tecnicos:")
-        import traceback
-        traceback.print_exc()
-        input("\nPressione Enter para sair...")
+        if is_standalone:
+            # Em standalone, mostrar erro mais amigável
+            import tkinter.messagebox as msgbox
+            try:
+                msgbox.showerror("Erro ao Iniciar", 
+                    f"Ocorreu um erro ao iniciar o sistema:\n\n{str(e)}\n\n"
+                    "Por favor, entre em contato com o suporte.")
+            except:
+                # Se tkinter não funcionar, usar print
+                print(f"\nERRO ao iniciar o sistema: {e}")
+                input("\nPressione Enter para sair...")
+        else:
+            print(f"\nERRO ao iniciar o sistema: {e}")
+            print("\nDetalhes tecnicos:")
+            import traceback
+            traceback.print_exc()
+            input("\nPressione Enter para sair...")
         sys.exit(1)
 
 if __name__ == "__main__":

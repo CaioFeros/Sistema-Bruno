@@ -11,8 +11,8 @@ mkdir Sistema-Bruno-Distribuicao
 echo Copiando arquivos necessarios...
 
 REM Copiar executavel
-if exist dist\Sistema-Bruno.exe (
-    copy dist\Sistema-Bruno.exe Sistema-Bruno-Distribuicao\
+if exist dist\setup.exe (
+    copy dist\setup.exe Sistema-Bruno-Distribuicao\
     echo [OK] Executavel copiado
 ) else (
     echo [ERRO] Executavel nao encontrado! Execute build_executavel.bat primeiro.
@@ -20,33 +20,13 @@ if exist dist\Sistema-Bruno.exe (
     exit /b 1
 )
 
-REM Copiar requirements.txt (para instalacao manual se necessario)
-copy requirements.txt Sistema-Bruno-Distribuicao\
-echo [OK] requirements.txt copiado
-
-REM Copiar README
-copy README.md Sistema-Bruno-Distribuicao\
-echo [OK] README.md copiado
-
-REM Copiar INSTALACAO.md
-copy INSTALACAO.md Sistema-Bruno-Distribuicao\
-echo [OK] INSTALACAO.md copiado
-
-REM Copiar LER_PRIMEIRO.txt
-copy LER_PRIMEIRO.txt Sistema-Bruno-Distribuicao\
-echo [OK] LER_PRIMEIRO.txt copiado
-
-REM Copiar README_EXECUTAVEL.md
-copy README_EXECUTAVEL.md Sistema-Bruno-Distribuicao\
-echo [OK] README_EXECUTAVEL.md copiado
-
-REM Copiar arquivos principais do sistema (caso o executavel nao funcione)
-copy main.py Sistema-Bruno-Distribuicao\
-copy pdf_extractor.py Sistema-Bruno-Distribuicao\
-copy data_processor.py Sistema-Bruno-Distribuicao\
-copy excel_exporter.py Sistema-Bruno-Distribuicao\
-copy run.py Sistema-Bruno-Distribuicao\
-echo [OK] Arquivos do sistema copiados
+REM Copiar arquivo de instrucoes
+if exist COMO_USAR.txt (
+    copy COMO_USAR.txt Sistema-Bruno-Distribuicao\
+    echo [OK] COMO_USAR.txt copiado
+) else (
+    echo [AVISO] COMO_USAR.txt nao encontrado
+)
 
 echo.
 echo ========================================
@@ -63,15 +43,11 @@ if %ERRORLEVEL% EQU 0 (
     echo Pronto para distribuir!
     echo.
     echo Contem:
-    echo   - Sistema-Bruno.exe (executavel principal)
-    echo   - requirements.txt (para instalacao manual)
-    echo   - README.md (documentacao completa)
-    echo   - INSTALACAO.md (guia de instalacao)
-    echo   - README_EXECUTAVEL.md (guia do executavel)
-    echo   - LER_PRIMEIRO.txt (guia rapido)
-    echo   - Arquivos .py (caso o executavel nao funcione)
+    echo   - setup.exe (executavel standalone)
+    echo   - COMO_USAR.txt (instrucoes de uso)
     echo.
-    echo Pronto para enviar para o GitHub Release ou distribuir!
+    echo O executavel e standalone e funciona sozinho!
+    echo Nao precisa instalar nada, apenas copiar e executar.
     echo.
 ) else (
     echo [ERRO] Falha ao criar ZIP
