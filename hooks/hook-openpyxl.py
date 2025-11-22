@@ -16,17 +16,13 @@ if 'openpyxl' not in hiddenimports:
     hiddenimports.append('openpyxl')
 
 # IMPORTANTE: Garantir que o próprio pacote openpyxl seja incluído
+# Adicionar o diretório completo do openpyxl aos dados
 try:
     import openpyxl
     openpyxl_path = os.path.dirname(openpyxl.__file__)
-    # Adicionar o diretório do openpyxl como dados para garantir inclusão
-    for root, dirs, files in os.walk(openpyxl_path):
-        for file in files:
-            if file.endswith(('.py', '.pyc', '.pyd')):
-                file_path = os.path.join(root, file)
-                rel_path = os.path.relpath(file_path, os.path.dirname(openpyxl_path))
-                target_dir = os.path.join('openpyxl', os.path.dirname(rel_path)) if os.path.dirname(rel_path) else 'openpyxl'
-                datas.append((file_path, target_dir))
+    # Adicionar o diretório completo do openpyxl
+    datas.append((openpyxl_path, 'openpyxl'))
+    print(f"hook-openpyxl: Adicionando diretório completo: {openpyxl_path} -> openpyxl")
 except Exception as e:
     print(f"AVISO hook-openpyxl: Erro ao coletar diretório: {e}")
 
