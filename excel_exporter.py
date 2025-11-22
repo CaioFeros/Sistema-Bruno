@@ -1,13 +1,38 @@
 """
 Módulo para exportação de dados para Excel.
 """
+import sys
+import os
+
+# Tentar importar openpyxl com tratamento de erro melhorado
+try:
+    from openpyxl import load_workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+except ImportError as e:
+    # Se for executável standalone, tentar adicionar _internal ao path
+    if getattr(sys, 'frozen', False):
+        base_path = os.path.dirname(sys.executable)
+        internal_path = os.path.join(base_path, '_internal')
+        if os.path.exists(internal_path) and internal_path not in sys.path:
+            sys.path.insert(0, internal_path)
+        try:
+            from openpyxl import load_workbook
+            from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+            from openpyxl.utils import get_column_letter
+        except ImportError:
+            raise ImportError(
+                f"Não foi possível importar openpyxl.\n"
+                f"Erro original: {e}\n"
+                f"Verifique se openpyxl está na pasta _internal do executável."
+            ) from e
+    else:
+        raise
+
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from openpyxl import load_workbook
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
 
 
 def format_excel_file(file_path: str, has_stats: bool = False):
