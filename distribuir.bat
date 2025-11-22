@@ -10,23 +10,16 @@ mkdir Sistema-Bruno-Distribuicao
 
 echo Copiando arquivos necessarios...
 
-REM Copiar pasta do executavel (nao e mais onefile)
-if exist dist\setup (
-    xcopy /E /I /Y dist\setup Sistema-Bruno-Distribuicao\setup
-    echo [OK] Pasta do executavel copiada
-) else (
-    echo [ERRO] Pasta do executavel nao encontrada! Execute instaler.bat primeiro.
-    pause
-    exit /b 1
-)
-
-REM Copiar arquivo de instrucoes
-if exist COMO_USAR.txt (
-    copy COMO_USAR.txt Sistema-Bruno-Distribuicao\
-    echo [OK] COMO_USAR.txt copiado
-) else (
-    echo [AVISO] COMO_USAR.txt nao encontrado
-)
+REM Copiar arquivos do sistema
+copy main.py Sistema-Bruno-Distribuicao\
+copy pdf_extractor.py Sistema-Bruno-Distribuicao\
+copy data_processor.py Sistema-Bruno-Distribuicao\
+copy excel_exporter.py Sistema-Bruno-Distribuicao\
+copy iniciar_sistema.py Sistema-Bruno-Distribuicao\
+copy requirements.txt Sistema-Bruno-Distribuicao\
+copy instalar_sistema.bat Sistema-Bruno-Distribuicao\
+copy INSTRUCOES_INSTALACAO.txt Sistema-Bruno-Distribuicao\
+echo [OK] Arquivos do sistema copiados
 
 echo.
 echo ========================================
@@ -43,12 +36,13 @@ if %ERRORLEVEL% EQU 0 (
     echo Pronto para distribuir!
     echo.
     echo Contem:
-    echo   - setup\ (pasta com executavel e dependencias)
-    echo     - setup.exe (executavel principal)
-    echo   - COMO_USAR.txt (instrucoes de uso)
+    echo   - instalar_sistema.bat (instalador - execute este arquivo)
+    echo   - INSTRUCOES_INSTALACAO.txt (instrucoes completas)
+    echo   - Arquivos .py do sistema
+    echo   - requirements.txt (dependencias)
     echo.
-    echo O executavel e standalone e funciona sozinho!
-    echo Nao precisa instalar nada, apenas copiar e executar.
+    echo O usuario deve executar instalar_sistema.bat para instalar!
+    echo O instalador configura tudo automaticamente.
     echo.
 ) else (
     echo [ERRO] Falha ao criar ZIP

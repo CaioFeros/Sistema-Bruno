@@ -1,0 +1,53 @@
+========================================
+SISTEMA DE EXTRAÇÃO DE RECIBOS PDF
+========================================
+
+INSTALAÇÃO SIMPLES - 3 PASSOS
+-------------------------------
+
+1. INSTALAR PYTHON (se ainda não tiver)
+   
+   - Baixe Python em: https://www.python.org/downloads/
+   - Execute o instalador
+   - IMPORTANTE: Marque a opção "Add Python to PATH"
+   - Clique em "Install Now"
+
+2. EXECUTAR O INSTALADOR
+   
+   - Dê duplo clique em "instalar_sistema.bat"
+   - Aguarde a instalação das dependências
+   - Um atalho será criado na sua área de trabalho
+
+3. USAR O SISTEMA
+   
+   - Clique duas vezes no atalho "Sistema Bruno" na área de trabalho
+   - OU execute: python main.py
+
+========================================
+
+COMO USAR O SISTEMA:
+-------------------
+
+1. Clique em "Selecionar PDF" e escolha seu arquivo
+   OU arraste o arquivo PDF para a área de upload
+
+2. Clique em "Processar PDF"
+
+3. Visualize os dados extraídos na tabela
+
+4. Clique em "Exportar para Excel" para salvar
+
+5. Use "Limpar Dados" para processar outro PDF
+
+========================================
+
+OBSERVAÇÕES:
+-----------
+
+- O sistema precisa de Python instalado (gratuito)
+- Funciona em Windows 10 ou superior
+- A primeira instalação pode levar alguns minutos
+- Após instalar, o sistema funciona normalmente
+
+========================================
+
