@@ -28,9 +28,9 @@ echo.
 
 REM Criar executavel standalone completo com todas as dependencias embutidas
 REM Usando --collect-all e --collect-submodules para garantir que tudo seja incluido
+REM NAO usando --onefile para evitar problemas com bibliotecas C (numpy/pandas)
 python -m PyInstaller ^
     --name="setup" ^
-    --onefile ^
     --windowed ^
     --icon=NONE ^
     --hidden-import=pandas ^

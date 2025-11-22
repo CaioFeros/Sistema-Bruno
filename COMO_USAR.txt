@@ -5,9 +5,11 @@ SISTEMA DE EXTRAÇÃO DE RECIBOS PDF
 COMO USAR:
 ----------
 
-1. Dê DUPLO CLIQUE no arquivo "setup.exe"
+1. Abra a pasta "setup"
 
-2. O programa abrirá automaticamente
+2. Dê DUPLO CLIQUE no arquivo "setup.exe"
+
+3. O programa abrirá automaticamente
 
 3. Para processar um PDF:
    - Clique em "Selecionar PDF" e escolha seu arquivo
@@ -34,7 +36,8 @@ OBSERVAÇÕES:
 - O programa funciona sozinho, não precisa instalar nada
 - Funciona em Windows 10 ou superior
 - Não é necessário ter Python instalado
-- Basta copiar o arquivo .exe para qualquer computador e executar
+- Basta copiar a pasta "setup" inteira para qualquer computador e executar o setup.exe dentro dela
+- IMPORTANTE: Não mova apenas o setup.exe, mantenha toda a pasta "setup" junta
 
 ========================================
 

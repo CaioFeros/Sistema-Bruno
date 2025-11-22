@@ -10,12 +10,12 @@ mkdir Sistema-Bruno-Distribuicao
 
 echo Copiando arquivos necessarios...
 
-REM Copiar executavel
-if exist dist\setup.exe (
-    copy dist\setup.exe Sistema-Bruno-Distribuicao\
-    echo [OK] Executavel copiado
+REM Copiar pasta do executavel (nao e mais onefile)
+if exist dist\setup (
+    xcopy /E /I /Y dist\setup Sistema-Bruno-Distribuicao\setup
+    echo [OK] Pasta do executavel copiada
 ) else (
-    echo [ERRO] Executavel nao encontrado! Execute build_executavel.bat primeiro.
+    echo [ERRO] Pasta do executavel nao encontrada! Execute instaler.bat primeiro.
     pause
     exit /b 1
 )
@@ -43,7 +43,8 @@ if %ERRORLEVEL% EQU 0 (
     echo Pronto para distribuir!
     echo.
     echo Contem:
-    echo   - setup.exe (executavel standalone)
+    echo   - setup\ (pasta com executavel e dependencias)
+    echo     - setup.exe (executavel principal)
     echo   - COMO_USAR.txt (instrucoes de uso)
     echo.
     echo O executavel e standalone e funciona sozinho!
