@@ -49,3 +49,10 @@ recibos_extraidos_*.xlsx
 Thumbs.db
 .DS_Store
 
+# Build do PyInstaller
+build/
+dist/
+*.spec
+__pycache__/
+*.pyc
+
