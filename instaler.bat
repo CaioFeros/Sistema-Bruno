@@ -125,6 +125,7 @@ python -m PyInstaller ^
     --collect-all=dateutil ^
     --collect-submodules=pandas ^
     --collect-submodules=numpy ^
+    --collect-submodules=openpyxl ^
     --collect-data=pandas ^
     --collect-data=numpy ^
     --collect-binaries=numpy ^
