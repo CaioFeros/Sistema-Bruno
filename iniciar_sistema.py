@@ -8,6 +8,16 @@ Verifica dependências antes de iniciar o programa.
 import sys
 import os
 
+# CORREÇÃO CRÍTICA: Configurar paths ANTES de qualquer importação quando for executável
+# Quando não usa --onefile, o PyInstaller coloca dependências em _internal
+if getattr(sys, 'frozen', False):
+    base_path = os.path.dirname(sys.executable)
+    internal_path = os.path.join(base_path, '_internal')
+    if os.path.exists(internal_path):
+        # Adicionar _internal ao path PRIMEIRO
+        if internal_path not in sys.path:
+            sys.path.insert(0, internal_path)
+
 def verificar_python():
     """Verifica se a versão do Python é compatível."""
     versao = sys.version_info
