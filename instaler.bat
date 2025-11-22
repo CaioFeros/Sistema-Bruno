@@ -39,6 +39,7 @@ python -m PyInstaller ^
     --windowed ^
     --icon=NONE ^
     --additional-hooks-dir=hooks ^
+    --collect-binaries=openpyxl ^
     --hidden-import=pandas ^
     --hidden-import=numpy ^
     --hidden-import=numpy.core ^
