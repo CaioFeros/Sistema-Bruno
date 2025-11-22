@@ -112,6 +112,10 @@ python -m PyInstaller ^
     --hidden-import=dateutil.relativedelta ^
     --hidden-import=dateutil.tz ^
     --collect-all=pdfplumber ^
+    --collect-all=pdfminer ^
+    --collect-all=PIL ^
+    --collect-submodules=pdfplumber ^
+    --collect-submodules=pdfminer ^
     --collect-all=openpyxl ^
     --collect-all=pandas ^
     --collect-all=numpy ^
