@@ -21,10 +21,15 @@ try:
     import openpyxl
     openpyxl_path = os.path.dirname(openpyxl.__file__)
     # Adicionar o diretório completo do openpyxl
+    # O PyInstaller precisa do diretório pai para incluir o pacote completo
+    openpyxl_parent = os.path.dirname(openpyxl_path)
     datas.append((openpyxl_path, 'openpyxl'))
     print(f"hook-openpyxl: Adicionando diretório completo: {openpyxl_path} -> openpyxl")
+    print(f"hook-openpyxl: Diretório pai: {openpyxl_parent}")
 except Exception as e:
     print(f"AVISO hook-openpyxl: Erro ao coletar diretório: {e}")
+    import traceback
+    traceback.print_exc()
 
 # Adicionar submódulos importantes
 hiddenimports += [
