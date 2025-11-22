@@ -20,7 +20,6 @@ echo.
 echo Limpando builds anteriores...
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
-if exist *.spec del /q *.spec
 
 echo.
 echo Criando executavel STANDALONE completo...
@@ -28,32 +27,70 @@ echo (Inclui Python embutido - nao precisa Python instalado)
 echo.
 
 REM Criar executavel standalone completo com todas as dependencias embutidas
+REM Usando --collect-all e --collect-submodules para garantir que tudo seja incluido
 python -m PyInstaller ^
     --name="setup" ^
     --onefile ^
     --windowed ^
     --icon=NONE ^
-    --hidden-import=pdfplumber ^
     --hidden-import=pandas ^
     --hidden-import=numpy ^
-    --hidden-import=openpyxl ^
-    --hidden-import=tkinter ^
-    --hidden-import=tkinterdnd2 ^
     --hidden-import=pandas._libs ^
     --hidden-import=pandas._libs.tslibs.timedeltas ^
     --hidden-import=pandas._libs.tslibs.nattype ^
     --hidden-import=pandas._libs.tslibs.np_datetime ^
+    --hidden-import=pandas._libs.tslibs.tzconversion ^
     --hidden-import=pandas._libs.skiplist ^
+    --hidden-import=pandas._libs.writers ^
+    --hidden-import=pandas._libs.parsers ^
+    --hidden-import=pandas._libs.index ^
+    --hidden-import=pandas._libs.hashtable ^
+    --hidden-import=pandas._libs.reduction ^
+    --hidden-import=pandas._libs.groupby ^
+    --hidden-import=pandas._libs.reshape ^
+    --hidden-import=pandas._libs.sparse ^
+    --hidden-import=pandas._libs.ops ^
+    --hidden-import=pandas._libs.missing ^
+    --hidden-import=pandas._libs.lib ^
+    --hidden-import=pandas._libs.tslib ^
+    --hidden-import=pandas._libs.tslibs.base ^
+    --hidden-import=pandas._libs.tslibs.conversion ^
+    --hidden-import=pandas._libs.tslibs.fields ^
+    --hidden-import=pandas._libs.tslibs.offsets ^
+    --hidden-import=pandas._libs.tslibs.parsing ^
+    --hidden-import=pandas._libs.tslibs.period ^
+    --hidden-import=pandas._libs.tslibs.timedeltas ^
+    --hidden-import=pandas._libs.tslibs.timestamps ^
+    --hidden-import=pandas._libs.tslibs.vectorized ^
+    --hidden-import=pandas._libs.window.aggregations ^
+    --hidden-import=pandas._libs.window.indexers ^
+    --hidden-import=pandas._libs.join ^
+    --hidden-import=pandas._libs.algos ^
+    --hidden-import=pandas._libs.internals ^
+    --hidden-import=pandas._libs.internals.blocks ^
+    --hidden-import=pandas._libs.arrays ^
+    --hidden-import=pandas._libs.properties ^
+    --hidden-import=pandas._libs.ops_dispatch ^
+    --hidden-import=pdfplumber ^
+    --hidden-import=openpyxl ^
+    --hidden-import=tkinter ^
+    --hidden-import=tkinterdnd2 ^
     --hidden-import=pytz ^
     --hidden-import=dateutil ^
     --hidden-import=dateutil.parser ^
+    --hidden-import=dateutil.relativedelta ^
+    --hidden-import=dateutil.tz ^
     --collect-all=pdfplumber ^
     --collect-all=openpyxl ^
     --collect-all=pandas ^
     --collect-all=numpy ^
     --collect-all=tkinter ^
+    --collect-all=pytz ^
+    --collect-all=dateutil ^
     --collect-submodules=pandas ^
     --collect-submodules=numpy ^
+    --collect-data=pandas ^
+    --collect-data=numpy ^
     --noconfirm ^
     iniciar_sistema.py
 

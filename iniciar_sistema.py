@@ -165,12 +165,38 @@ def main():
     try:
         # Testar importações críticas primeiro
         if is_standalone:
+            print("Testando importações críticas...")
+            try:
+                import numpy
+                print("  [OK] numpy")
+            except ImportError as e:
+                print(f"  [ERRO] numpy: {e}")
+                import tkinter.messagebox as msgbox
+                msgbox.showerror("Erro de Dependência", 
+                    f"Erro ao carregar numpy:\n\n{str(e)}\n\n"
+                    "O executável pode estar corrompido ou incompleto.\n"
+                    "Por favor, gere um novo executável usando instaler.bat")
+                sys.exit(1)
+            
             try:
                 import pandas as pd
+                print("  [OK] pandas")
+                # Testar funcionalidade básica do pandas
+                df = pd.DataFrame({'test': [1, 2, 3]})
+                print("  [OK] pandas funcional")
             except ImportError as e:
+                print(f"  [ERRO] pandas: {e}")
                 import tkinter.messagebox as msgbox
                 msgbox.showerror("Erro de Dependência", 
                     f"Erro ao carregar pandas:\n\n{str(e)}\n\n"
+                    "O executável pode estar corrompido ou incompleto.\n"
+                    "Por favor, gere um novo executável usando instaler.bat")
+                sys.exit(1)
+            except Exception as e:
+                print(f"  [ERRO] pandas funcionalidade: {e}")
+                import tkinter.messagebox as msgbox
+                msgbox.showerror("Erro de Dependência", 
+                    f"Erro ao usar pandas:\n\n{str(e)}\n\n"
                     "O executável pode estar corrompido ou incompleto.\n"
                     "Por favor, gere um novo executável usando instaler.bat")
                 sys.exit(1)
