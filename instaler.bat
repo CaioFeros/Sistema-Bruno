@@ -116,10 +116,6 @@ python -m PyInstaller ^
     --collect-data=numpy ^
     --collect-binaries=numpy ^
     --collect-binaries=pandas ^
-    --collect-dynamic-modules=numpy ^
-    --collect-dynamic-modules=pandas ^
-    --copy-metadata=numpy ^
-    --copy-metadata=pandas ^
     --noconfirm ^
     iniciar_sistema.py
 
