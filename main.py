@@ -20,6 +20,7 @@ except ImportError:
 from pdf_extractor import extract_from_pdf
 from data_processor import process_receipt_data, process_multiple_receipts, validate_data, calculate_seller_statistics
 from excel_exporter import export_to_excel
+from logger import inicializar_log, get_logger
 
 
 class ReceiptExtractorApp:
@@ -33,6 +34,10 @@ class ReceiptExtractorApp:
         self.current_dataframe = None
         self.progress_window = None
         self.is_processing = False
+        
+        # Inicializar sistema de log
+        self.logger = inicializar_log()
+        self.logger.info("Interface gráfica inicializada")
         
         # Configurar tema dark
         self.setup_dark_theme()
@@ -442,6 +447,11 @@ class ReceiptExtractorApp:
             messagebox.showwarning("Aviso", "Já existe um processamento em andamento.")
             return
         
+        # Registrar início do processamento
+        self.logger.separador("INÍCIO DO PROCESSAMENTO")
+        self.logger.info(f"Iniciando processamento do arquivo: {self.current_pdf_path}")
+        self.logger.detalhes_arquivo(self.current_pdf_path)
+        
         # Desabilitar botão de processar
         self.process_btn.config(state=tk.DISABLED)
         self.is_processing = True
@@ -460,43 +470,128 @@ class ReceiptExtractorApp:
             def progress_callback(current, total, message=""):
                 if not self.is_processing:
                     return
+                if message:
+                    self.logger.info(f"Progresso: {message}")
                 self.root.after(0, self.update_progress, current, total, message)
             
             # Extrair dados do PDF (pode retornar múltiplos recibos)
+            self.logger.info("Iniciando extração de dados do PDF...")
             receipts_data = extract_from_pdf(self.current_pdf_path, progress_callback)
             
             if not self.is_processing:
                 return
             
+            # Log de recibos encontrados
+            if isinstance(receipts_data, list):
+                self.logger.detalhes_recibos(len(receipts_data))
+                for idx, receipt in enumerate(receipts_data, 1):
+                    recibo_num = receipt.get('numero', 'N/A')
+                    num_produtos = len(receipt.get('produtos', []))
+                    self.logger.info(f"Recibo {idx}: Nº {recibo_num} - {num_produtos} produtos")
+            else:
+                self.logger.detalhes_recibos(1)
+            
             # Processar dados (suporta múltiplos recibos)
             self.root.after(0, self.update_progress, 0, 0, "Processando dados extraídos...")
+            self.logger.info("Processando dados extraídos...")
             
+            # Log detalhado dos dados BRUTOS extraídos (antes do processamento)
+            self.logger.separador("DADOS BRUTOS EXTRAÍDOS (ANTES DO PROCESSAMENTO)")
             if isinstance(receipts_data, list):
-                self.current_dataframe = process_multiple_receipts(receipts_data)
+                self.logger.info(f"Total de recibos brutos: {len(receipts_data)}")
+                for idx, receipt in enumerate(receipts_data, 1):
+                    recibo_num = receipt.get('numero', 'N/A')
+                    produtos_brutos = receipt.get('produtos', [])
+                    self.logger.info(f"Recibo {idx} (Nº {recibo_num}) - Produtos brutos: {len(produtos_brutos)}")
+                    for pidx, produto in enumerate(produtos_brutos, 1):
+                        self.logger.info(f"  Produto bruto {pidx}:")
+                        self.logger.info(f"    Descrição: '{produto.get('descricao', '')}'")
+                        self.logger.info(f"    Quantidade: '{produto.get('quantidade', '')}'")
+                        self.logger.info(f"    Valor Unitário: '{produto.get('valor_unitario', '')}'")
                 num_recibos = len(receipts_data)
+                self.current_dataframe = process_multiple_receipts(receipts_data)
             else:
                 # Compatibilidade com formato antigo (único recibo)
-                self.current_dataframe = process_receipt_data(receipts_data)
+                self.logger.info(f"Recibo único - Produtos brutos: {len(receipts_data.get('produtos', []))}")
+                for pidx, produto in enumerate(receipts_data.get('produtos', []), 1):
+                    self.logger.info(f"  Produto bruto {pidx}:")
+                    self.logger.info(f"    Descrição: '{produto.get('descricao', '')}'")
+                    self.logger.info(f"    Quantidade: '{produto.get('quantidade', '')}'")
+                    self.logger.info(f"    Valor Unitário: '{produto.get('valor_unitario', '')}'")
                 num_recibos = 1
+                self.current_dataframe = process_receipt_data(receipts_data)
             
             if not self.is_processing:
                 return
             
+            # Log detalhado dos dados APÓS PROCESSAMENTO (o que será exibido na interface)
+            self.logger.separador("DADOS APÓS PROCESSAMENTO (O QUE SERÁ EXIBIDO NA INTERFACE)")
+            self.logger.info(f"Total de linhas no DataFrame final: {len(self.current_dataframe)}")
+            if not self.current_dataframe.empty:
+                self.logger.info("Dados que serão exibidos na interface:")
+                for idx, row in self.current_dataframe.iterrows():
+                    self.logger.info(f"  Linha {idx + 1}:")
+                    self.logger.info(f"    Nº Recibo: '{row.get('Nº Recibo', '')}'")
+                    self.logger.info(f"    Vendedor: '{row.get('Vendedor', '')}'")
+                    self.logger.info(f"    Cliente: '{row.get('Cliente', '')}'")
+                    self.logger.info(f"    Descrição: '{row.get('Descrição do Produto', '')}'")
+                    self.logger.info(f"    Quantidade: '{row.get('Quantidade', '')}'")
+                    self.logger.info(f"    Valor Unitário: '{row.get('Valor Unitário', '')}'")
+            else:
+                self.logger.warning("ATENÇÃO: DataFrame vazio! Nenhum dado será exibido na interface!")
+            
             # Validar dados
+            self.logger.info("Validando dados extraídos...")
             is_valid, errors = validate_data(self.current_dataframe)
+            
+            if errors:
+                self.logger.warning(f"Erros encontrados na validação: {len(errors)}")
+                for error in errors:
+                    self.logger.warning(f"  - {error}")
             
             # Atualizar interface na thread principal
             self.root.after(0, self._finish_processing, is_valid, errors, num_recibos)
             
         except FileNotFoundError as e:
+            self.logger.error(f"Arquivo não encontrado: {str(e)}", exc_info=True)
             self.root.after(0, self._handle_error, f"Arquivo não encontrado:\n{str(e)}")
         except Exception as e:
+            self.logger.error(f"Erro ao processar PDF: {str(e)}", exc_info=True)
             self.root.after(0, self._handle_error, f"Erro ao processar PDF:\n{str(e)}")
     
     def _finish_processing(self, is_valid, errors, num_recibos):
         """Finaliza o processamento na thread principal."""
         self.is_processing = False
         self.close_progress_window()
+        
+        num_linhas = len(self.current_dataframe)
+        
+        # Log detalhado FINAL dos dados que serão realmente exibidos na interface
+        self.logger.separador("RESUMO FINAL - DADOS QUE SERÃO EXIBIDOS NA INTERFACE")
+        self.logger.info(f"Total de linhas no DataFrame final: {num_linhas}")
+        self.logger.info(f"Total de recibos processados: {num_recibos}")
+        
+        if not self.current_dataframe.empty:
+            self.logger.info("=== DETALHAMENTO COMPLETO DE CADA LINHA QUE SERÁ EXIBIDA ===")
+            for idx, row in self.current_dataframe.iterrows():
+                self.logger.info(f"\n--- LINHA {idx + 1} NA INTERFACE ---")
+                self.logger.info(f"Nº Recibo: '{str(row.get('Nº Recibo', 'N/A'))}'")
+                self.logger.info(f"Vendedor: '{str(row.get('Vendedor', 'N/A'))}'")
+                self.logger.info(f"Cliente: '{str(row.get('Cliente', 'N/A'))}'")
+                self.logger.info(f"Descrição do Produto: '{str(row.get('Descrição do Produto', 'N/A'))}'")
+                self.logger.info(f"Quantidade: '{str(row.get('Quantidade', 'N/A'))}' (tipo: {type(row.get('Quantidade', '')).__name__})")
+                valor_unit = row.get('Valor Unitário', 'N/A')
+                self.logger.info(f"Valor Unitário: '{str(valor_unit)}' (tipo: {type(valor_unit).__name__})")
+                # Se for numérico, mostrar também o valor formatado
+                if isinstance(valor_unit, (int, float)):
+                    self.logger.info(f"Valor Unitário (numérico): {valor_unit}")
+        else:
+            self.logger.error("ERRO CRÍTICO: DataFrame vazio! Nenhum dado será exibido na interface!")
+        
+        self.logger.separador("FIM DO PROCESSAMENTO")
+        self.logger.info(f"Processamento concluído: {num_recibos} recibo(s) e {num_linhas} linha(s)")
+        self.logger.info(f"Arquivo de log: {self.logger.get_log_file()}")
+        self.logger.separador()
         
         if not is_valid:
             error_msg = "\n".join(errors)
@@ -509,7 +604,6 @@ class ReceiptExtractorApp:
         self.export_btn.config(state=tk.NORMAL)
         self.process_btn.config(state=tk.NORMAL)
         
-        num_linhas = len(self.current_dataframe)
         status_msg = f"Dados processados com sucesso! {num_recibos} recibo(s) e {num_linhas} linha(s) encontrada(s)."
         self.status_label.config(text=status_msg, foreground=self.colors['success'])
     

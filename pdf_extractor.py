@@ -28,6 +28,27 @@ except ImportError as e:
 import re
 from typing import Dict, List, Optional
 
+# Importar logger
+try:
+    from logger import get_logger
+    logger = get_logger()
+except ImportError:
+    # Se logger não estiver disponível, criar um logger silencioso
+    class DummyLogger:
+        def info(self, *args, **kwargs): pass
+        def debug(self, *args, **kwargs): pass
+        def warning(self, *args, **kwargs): pass
+        def error(self, *args, **kwargs): pass
+        def separador(self, *args, **kwargs): pass
+        def detalhes_arquivo(self, *args, **kwargs): pass
+        def detalhes_texto(self, *args, **kwargs): pass
+        def detalhes_paginas(self, *args, **kwargs): pass
+        def detalhes_recibos(self, *args, **kwargs): pass
+        def detalhes_produtos(self, *args, **kwargs): pass
+        def detalhes_secao_produtos(self, *args, **kwargs): pass
+        def detalhes_linhas_processadas(self, *args, **kwargs): pass
+    logger = DummyLogger()
+
 
 def _remove_duplicate_chars(text: str) -> str:
     """
@@ -171,23 +192,39 @@ def extract_text_from_pdf(pdf_path: str, progress_callback=None) -> str:
         FileNotFoundError: Se o arquivo n├úo for encontrado
         Exception: Se houver erro ao processar o PDF
     """
+    logger.separador("EXTRAÇÃO DE TEXTO DO PDF")
+    logger.info(f"Iniciando extração de texto: {pdf_path}")
+    
     try:
         text = ""
         with pdfplumber.open(pdf_path) as pdf:
             total_pages = len(pdf.pages)
+            logger.info(f"PDF aberto com sucesso. Total de páginas: {total_pages}")
+            
+            paginas_com_texto = 0
             for page_num, page in enumerate(pdf.pages, 1):
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n"
+                    paginas_com_texto += 1
+                
+                # Log a cada 100 páginas para não sobrecarregar
+                if page_num % 100 == 0 or page_num == total_pages:
+                    logger.debug(f"Página {page_num}/{total_pages} processada. Páginas com texto: {paginas_com_texto}")
                 
                 # Chamar callback de progresso se fornecido
                 if progress_callback:
                     progress_callback(page_num, total_pages)
+            
+            logger.detalhes_paginas(total_pages, paginas_com_texto)
+            logger.detalhes_texto(text)
         
         return text
-    except FileNotFoundError:
+    except FileNotFoundError as e:
+        logger.error(f"Arquivo não encontrado: {pdf_path}", exc_info=True)
         raise FileNotFoundError(f"Arquivo n├úo encontrado: {pdf_path}")
     except Exception as e:
+        logger.error(f"Erro ao processar PDF: {str(e)}", exc_info=True)
         raise Exception(f"Erro ao processar PDF: {str(e)}")
 
 
@@ -258,15 +295,136 @@ def extract_receipt_data(text: str) -> Dict:
     
     # Extrair produtos
     # Procurar pela se├º├úo "DADOS DO PRODUTO" APENAS dentro deste recibo
-    # Usar padr├úo mais flex├¡vel para capturar toda a se├º├úo at├® "TOTAL"
+    # Para arquivos grandes, usar busca linha por linha que é mais robusta
     
-    # Primeiro, verificar se h├í se├º├úo de produtos neste texto
-    # Procurar por "DADOS DO PRODUTO" que vem ANTES de "TOTAL DE MERCADORIAS" ou "TOTAIS" ou "PAGAMENTO"
-    produtos_section = re.search(r'DADOS\s+DO\s+PRODUTO.*?(?=TOTAL\s+DE\s+MERCADORIAS|TOTAIS|PAGAMENTO|$)', text, re.IGNORECASE | re.DOTALL)
+    logger.debug("Procurando seção 'DADOS DO PRODUTO'...")
     
-    if produtos_section:
-        produtos_text = produtos_section.group(0)
-        lines = produtos_text.split('\n')
+    # Dividir texto em linhas primeiro para processar de forma mais eficiente
+    all_lines = text.split('\n')
+    total_lines = len(all_lines)
+    logger.debug(f"Texto dividido em {total_lines} linhas")
+    
+    # Procurar pelo início da seção "DADOS DO PRODUTO"
+    produtos_start_idx = -1
+    produtos_end_idx = len(all_lines)
+    
+    for i, line in enumerate(all_lines):
+        if re.search(r'DADOS\s+DO\s+PRODUTO', line, re.IGNORECASE):
+            produtos_start_idx = i
+            logger.info(f"Seção 'DADOS DO PRODUTO' encontrada na linha {i}")
+            logger.debug(f"Linha encontrada: {line[:100]}...")
+            break
+    
+    if produtos_start_idx >= 0:
+        # Procurar pelo fim da seção - encontrar o próximo marcador de fim
+        # IMPORTANTE: Não parar no primeiro marcador se houver pouco conteúdo antes
+        # Isso evita parar em subtotais ou totais intermediários
+        logger.debug("Procurando marcadores de fim da seção...")
+        
+        # Mínimo de linhas esperadas na seção de produtos (ajustável)
+        # Para arquivos grandes, esperamos seções muito maiores
+        # Se o texto tem muitas linhas, esperamos seção proporcionalmente maior
+        min_linhas_secao = max(30, total_lines // 20)  # Pelo menos 30 linhas ou 5% do texto, o que for maior
+        logger.debug(f"Mínimo de linhas esperadas na seção: {min_linhas_secao} (total de linhas: {total_lines})")
+        
+        # Procurar todos os possíveis marcadores de fim
+        possiveis_fins = []
+        
+        for i in range(produtos_start_idx + 1, len(all_lines)):
+            line = all_lines[i].upper().strip()
+            
+            # Verificar se encontramos um marcador de fim
+            if re.search(r'TOTAL\s+DE\s+MERCADORIAS', line, re.IGNORECASE):
+                # Verificar se a linha contém valores numéricos (indica total real)
+                if re.search(r'[\d.,]+\s+[\d.,]+\s+[\d.,]+', line):
+                    possiveis_fins.append((i, 'TOTAL_DE_MERCADORIAS', line))
+            elif re.search(r'^TOTAIS', line, re.IGNORECASE):
+                possiveis_fins.append((i, 'TOTAIS', line))
+            elif re.search(r'^PAGAMENTO', line, re.IGNORECASE):
+                possiveis_fins.append((i, 'PAGAMENTO', line))
+        
+        # Decidir qual marcador usar
+        if possiveis_fins:
+            # Se houver apenas um marcador ou o primeiro marcador já está longe o suficiente
+            primeiro_fim = possiveis_fins[0]
+            linhas_ate_primeiro = primeiro_fim[0] - produtos_start_idx
+            
+            # Se o primeiro marcador já está distante o suficiente, usar ele
+            if linhas_ate_primeiro >= min_linhas_secao:
+                produtos_end_idx = primeiro_fim[0]
+                logger.info(f"Marcador de fim encontrado na linha {primeiro_fim[0]}: {primeiro_fim[2][:50]}... (tipo: {primeiro_fim[1]})")
+            else:
+                # Se o primeiro marcador está muito perto, pode ser subtotal
+                # Procurar pelo próximo marcador que esteja mais distante
+                logger.debug(f"Primeiro marcador muito próximo (linha {primeiro_fim[0]}, apenas {linhas_ate_primeiro} linhas). Procurando próximo marcador...")
+                
+                # Procurar pelo próximo marcador "PAGAMENTO" ou "TOTAIS" que indica fim real
+                fim_real_encontrado = False
+                for fim_idx, fim_tipo, fim_line in possiveis_fins:
+                    linhas_ate_fim = fim_idx - produtos_start_idx
+                    # PAGAMENTO e TOTAIS são mais prováveis de serem o fim real
+                    if fim_tipo in ['PAGAMENTO', 'TOTAIS'] and linhas_ate_fim >= min_linhas_secao:
+                        produtos_end_idx = fim_idx
+                        logger.info(f"Marcador de fim REAL encontrado na linha {fim_idx}: {fim_line[:50]}... (tipo: {fim_tipo})")
+                        fim_real_encontrado = True
+                        break
+                
+                # Se não encontrou marcador de fim real, procurar mais adiante no texto
+                # Por padrão, continuar procurando até encontrar "PAGAMENTO" ou outro marcador confiável
+                if not fim_real_encontrado:
+                    logger.debug("Procurando marcadores mais distantes no texto...")
+                    
+                    # Procurar mais adiante no texto (até 200 linhas além do último marcador ou fim do texto)
+                    limite_busca = min(len(all_lines), (possiveis_fins[-1][0] if possiveis_fins else produtos_start_idx) + 200)
+                    
+                    for i in range(possiveis_fins[-1][0] + 1 if possiveis_fins else produtos_start_idx + min_linhas_secao, limite_busca):
+                        line = all_lines[i].upper().strip()
+                        
+                        # Procurar por PAGAMENTO (sempre fim real)
+                        if re.search(r'^PAGAMENTO', line, re.IGNORECASE):
+                            produtos_end_idx = i
+                            linhas_ate_fim = i - produtos_start_idx
+                            logger.info(f"Marcador PAGAMENTO encontrado na linha {i} ({linhas_ate_fim} linhas do início) - fim real da seção")
+                            fim_real_encontrado = True
+                            break
+                        # Procurar por TOTAIS mais distante
+                        elif re.search(r'^TOTAIS', line, re.IGNORECASE):
+                            linhas_ate_fim = i - produtos_start_idx
+                            if linhas_ate_fim >= min_linhas_secao:
+                                produtos_end_idx = i
+                                logger.info(f"Marcador TOTAIS encontrado na linha {i} ({linhas_ate_fim} linhas do início)")
+                                fim_real_encontrado = True
+                                break
+                    
+                    # Se ainda não encontrou, usar o último marcador que esteja razoavelmente distante
+                    if not fim_real_encontrado:
+                        for fim_idx, fim_tipo, fim_line in reversed(possiveis_fins):
+                            linhas_ate_fim = fim_idx - produtos_start_idx
+                            # Se está pelo menos 20% mais longe que o mínimo, pode ser válido
+                            if linhas_ate_fim >= min_linhas_secao * 0.8:
+                                produtos_end_idx = fim_idx
+                                logger.info(f"Usando marcador {fim_tipo} na linha {fim_idx} ({linhas_ate_fim} linhas do início)")
+                                fim_real_encontrado = True
+                                break
+                    
+                    # Último recurso: usar o último marcador disponível
+                    if not fim_real_encontrado and possiveis_fins:
+                        ultimo_fim = possiveis_fins[-1]
+                        produtos_end_idx = ultimo_fim[0]
+                        logger.warning(f"ATENÇÃO: Usando último marcador disponível na linha {ultimo_fim[0]} (apenas {ultimo_fim[0] - produtos_start_idx} linhas do início). Pode estar muito cedo!")
+        else:
+            # Nenhum marcador encontrado, usar até o fim do texto
+            logger.warning("Nenhum marcador de fim encontrado, usando todas as linhas até o final do texto")
+            produtos_end_idx = len(all_lines)
+        
+        # Extrair as linhas da seção de produtos
+        lines = all_lines[produtos_start_idx:produtos_end_idx]
+        logger.detalhes_secao_produtos(produtos_start_idx, produtos_end_idx, total_lines)
+        
+        # Log das primeiras 20 linhas para debug
+        logger.debug("Primeiras 20 linhas da seção de produtos:")
+        for idx, line in enumerate(lines[:20], produtos_start_idx):
+            logger.debug(f"  Linha {idx} (índice {idx-produtos_start_idx}): {line[:100]}...")
         
         # Procurar por todas as ocorr├¬ncias de padr├Áes de produto
         # Padr├úo: linha com UNID (2-3 letras) seguido de QTD e V.UNIT├üRIO
@@ -277,6 +435,18 @@ def extract_receipt_data(text: str) -> Dict:
         linhas_processadas = set()  # Evitar processar a mesma linha duas vezes
         produtos_vistos = set()  # Evitar produtos duplicados
         
+        # Log detalhado para debug
+        linhas_com_padrao = 0
+        linhas_ignoradas = 0
+        linhas_sem_padrao = 0
+        
+        logger.debug(f"Iniciando busca de produtos nas {len(lines)} linhas da seção...")
+        
+        # Mostrar primeiras 15 linhas da seção para debug
+        logger.debug("Primeiras 15 linhas da seção de produtos:")
+        for idx, line in enumerate(lines[:15]):
+            logger.debug(f"  Linha {idx}: {line[:120]}")
+        
         while i < len(lines):
             line = lines[i].strip()
             
@@ -286,13 +456,103 @@ def extract_receipt_data(text: str) -> Dict:
                 continue
             
             # Procurar por linha com padr├úo UNID QTD V.UNIT├üRIO
-            # Padr├úo mais espec├¡fico: 2-3 letras (UNID), espa├ºo, n├║mero com v├¡rgula/ponto (QTD), espa├ºo, n├║mero com v├¡rgula/ponto (VALOR)
-            produto_match = re.search(r'([A-Z]{2,3})\s+([\d.,]+)\s+([\d.,]+)', line)
+            # Tentar múltiplos padrões para capturar todas as variações possíveis
+            produto_match = None
+            
+            # Padrão 1: UNID (2-3 letras) + números (padrão mais comum)
+            # Formato: UNI 10,000 900,000 ou UNI 10.000 900.000
+            # Pode ter texto antes do UNID (códigos, etc.)
+            produto_match = re.search(r'([A-Z]{2,3})\s+([\d.,]+\d)\s+([\d.,]+\d)', line)
+            
+            # Padrão 2: UNID (1-4 letras) + números com mais flexibilidade (permite mais espaços)
+            # IMPORTANTE: Pode ter texto antes do UNID (códigos de produto, etc.)
+            if not produto_match:
+                produto_match = re.search(r'([A-Z]{1,4})\s+([\d.,]{2,})\s+([\d.,]{3,})', line)
+            
+            # Log de teste para linha 3 (debug)
+            if i == 3 and not produto_match and 'ANVISA' in line.upper() and ('FR' in line or 'CN' in line):
+                logger.debug(f"DEBUG Linha 3: Testando padrões... Linha: {line[:150]}")
+                # Testar padrão 2b manualmente para debug
+                teste_padrao = re.search(r'\b([A-Z]{2})\s+([\d.,]{3,})\s+([\d.,]{3,})', line)
+                if teste_padrao:
+                    logger.debug(f"DEBUG Linha 3: Padrão 2b ENCONTRADO! UNID={teste_padrao.group(1)}, QTD={teste_padrao.group(2)}, VALOR={teste_padrao.group(3)}")
+                else:
+                    logger.debug(f"DEBUG Linha 3: Padrão 2b NÃO encontrado")
+            
+            # Padrão 2b: Procurar UNID em qualquer lugar da linha seguido de dois números grandes
+            # IMPORTANTE: Procurar por padrão "2 letras + espaço + número + espaço + número"
+            # Exemplos: "...ANVISA FR 10,000 900,000" ou "...ANVISA CN 2,000 3.100,000"
+            if not produto_match:
+                # Buscar por: 2 letras maiúsculas isoladas + espaço + número grande + espaço + número grande
+                # IMPORTANTE: Usar \b (word boundary) para garantir que não é parte de palavra maior
+                # Procura por "FR" ou "CN" seguido de espaços e números
+                # Simplificar: procurar por qualquer 2 letras maiúsculas seguidas de espaço e números
+                produto_match = re.search(r'\b([A-Z]{2})\s+([\d.,]+)\s+([\d.,]+)', line)
+                if produto_match:
+                    unid_text = produto_match.group(1)
+                    unid_pos = produto_match.start(1)
+                    texto_antes = line[:unid_pos].strip().upper()
+                    
+                    # Log de debug para linha 3
+                    if i == 3:
+                        logger.debug(f"DEBUG Linha 3: Padrão 2b encontrado! UNID={unid_text}, pos={unid_pos}")
+                        logger.debug(f"DEBUG Linha 3: Texto antes='{texto_antes[-20:]}'")
+                    
+                    # Ignorar se for parte de palavras conhecidas
+                    palavras_ignorar = ['FRETE', 'FRET', 'FRENTE', 'FRANC', 'FRANCA', 'CNPJ', 'CNP']
+                    if any(palavra in texto_antes[-15:] for palavra in palavras_ignorar):
+                        if i == 3:
+                            logger.debug(f"DEBUG Linha 3: REJEITADO - faz parte de palavra conhecida")
+                        produto_match = None
+                    # Se está depois de "ANVISA", é provavelmente válido (padrão comum)
+                    elif 'ANVISA' in texto_antes:
+                        # Aceitar - ANVISA geralmente vem antes do UNID de produto
+                        if i == 3:
+                            logger.debug(f"DEBUG Linha 3: ACEITO - está depois de ANVISA")
+                        pass
+                    # Se tem muitos códigos antes (indicando linha de produto), aceitar
+                    elif len(texto_antes) > 30 and any(char.isdigit() for char in texto_antes[-10:]):
+                        # Tem muitos caracteres e números antes, provavelmente é válido
+                        if i == 3:
+                            logger.debug(f"DEBUG Linha 3: ACEITO - tem muitos códigos antes")
+                        pass
+                    else:
+                        if i == 3:
+                            logger.debug(f"DEBUG Linha 3: REJEITADO - não passou nas validações")
+                        # Se não passou nas validações, mas está em contexto de produto, aceitar mesmo assim
+                        # (melhor aceitar falso positivo do que perder produto)
+                        pass  # Aceitar mesmo assim se encontrou o padrão
+            
+            # Padrão 3: Procurar por linhas que tenham descrição de produto na linha anterior
+            # e UNID QTD VALOR na linha atual (produtos podem estar em múltiplas linhas)
+            if not produto_match and i > 0:
+                # Verificar se a linha anterior tem descrição de produto
+                linha_anterior = lines[i-1].strip()
+                tem_descricao_produto = (
+                    any(nome in linha_anterior.upper() for nome in ['TIRZEPATIDE', 'SEMAGLUTIDA', 'SEMAGLUTIDE', 'CANETA']) or
+                    (len(linha_anterior) > 20 and any(keyword in linha_anterior.upper() for keyword in ['MG', 'ML', 'SOL', 'INJ', 'FRASCO']))
+                )
+                
+                if tem_descricao_produto:
+                    # Esta linha pode ter UNID QTD VALOR
+                    produto_match = re.search(r'([A-Z]{2,3})\s+([\d.,]+\d)\s+([\d.,]+\d)', line)
+                    if not produto_match:
+                        # Tentar padrão mais flexível
+                        produto_match = re.search(r'([A-Z]{1,4})\s*([\d.,]{2,})\s+([\d.,]{3,})', line)
+            
+            # Log detalhado quando encontrar padrão (apenas primeiras vezes para não sobrecarregar)
+            if produto_match:
+                linhas_com_padrao += 1
+                if linhas_com_padrao <= 5:
+                    logger.debug(f"Linha {i} COM PADRÃO ENCONTRADO: UNID={produto_match.group(1)}, QTD={produto_match.group(2)}, VALOR={produto_match.group(3)}")
+                    logger.debug(f"  Linha completa: {line[:120]}")
             
             if produto_match:
                 # Verificar se n├úo ├® uma linha de total
                 if 'TOTAL' in line.upper() or 'MERCADORIAS' in line.upper():
                     linhas_processadas.add(i)  # Marcar como processada
+                    linhas_ignoradas += 1
+                    logger.debug(f"Linha {i} ignorada (é linha de total): {line[:60]}...")
                     i += 1
                     continue
                 
@@ -350,7 +610,8 @@ def extract_receipt_data(text: str) -> Dict:
                 linhas_validas = []
                 linha_nome_produto = None  # Prioridade m├íxima: linha que come├ºa com nome de produto
                 
-                for j in range(i-1, max(-1, i-6), -1):  # De i-1 at├® i-5, de tr├ís para frente
+                # Aumentar o alcance para até 10 linhas anteriores (para arquivos grandes com múltiplas linhas de descrição)
+                for j in range(i-1, max(-1, i-11), -1):  # De i-1 at├® i-10, de tr├ís para frente
                     if j < 0:
                         break
                     
@@ -438,6 +699,15 @@ def extract_receipt_data(text: str) -> Dict:
                 # Remover duplicatas de palavras/frases inteiras
                 descricao = _remove_duplicate_phrases(descricao)
                 
+                # Log detalhado ANTES de adicionar o produto
+                logger.debug(f"=== ADICIONANDO PRODUTO (linha {i}) ===")
+                logger.debug(f"  Descrição ANTES limpeza: '{' '.join(descricao_parts).strip()}'")
+                logger.debug(f"  Descrição DEPOIS limpeza: '{descricao}'")
+                logger.debug(f"  UNID: '{unid}'")
+                logger.debug(f"  Quantidade: '{qtd}'")
+                logger.debug(f"  Valor Unitário: '{valor}'")
+                logger.debug(f"  Linha completa: '{line[:150]}'")
+                
                 # Adicionar produto
                 if 'TOTAL' not in descricao.upper() and 'MERCADORIAS' not in descricao.upper():
                     # Criar chave ├║nica para verificar duplicatas
@@ -452,24 +722,54 @@ def extract_receipt_data(text: str) -> Dict:
                             'quantidade': qtd,
                             'valor_unitario': valor
                         }
+                        logger.debug(f"  ✓ PRODUTO ADICIONADO ao array:")
+                        logger.debug(f"    - Descrição: '{produto['descricao']}'")
+                        logger.debug(f"    - Quantidade: '{produto['quantidade']}'")
+                        logger.debug(f"    - Valor Unitário: '{produto['valor_unitario']}'")
                         produtos_encontrados.append(produto)
                         produtos_vistos.add(produto_key)
                         linhas_processadas.add(i)
                     else:
                         # Produto duplicado detectado - pular esta linha
+                        logger.debug(f"  ✗ PRODUTO DUPLICADO - ignorado (já existe: {produto_key})")
                         linhas_processadas.add(i)
+                else:
+                    logger.debug(f"  ✗ PRODUTO REJEITADO - contém TOTAL/MERCADORIAS na descrição")
+            
+            else:
+                # Linha sem padrão de produto reconhecido
+                linhas_sem_padrao += 1
+                # Log de amostra das linhas sem padrão - especialmente linhas que parecem ter dados
+                # Verificar se a linha tem números que parecem QTD e VALOR
+                tem_numeros = re.search(r'[\d.,]{4,}', line)
+                if tem_numeros and ('ANVISA' in line.upper() or 'FR ' in line.upper() or 'CN ' in line.upper() or i < 10):
+                    logger.debug(f"Linha {i} sem padrão de produto (mas tem números): {line[:120]}...")
+                elif i < 10:
+                    logger.debug(f"Linha {i} sem padrão de produto: {line[:80]}...")
             
             i += 1
+        
+        # Log detalhado do processamento
+        logger.debug(f"Estatísticas de processamento:")
+        logger.debug(f"  Linhas com padrão encontrado: {linhas_com_padrao}")
+        logger.debug(f"  Linhas ignoradas (totais, etc.): {linhas_ignoradas}")
+        logger.debug(f"  Linhas sem padrão: {linhas_sem_padrao}")
+        logger.debug(f"  Linhas processadas como produtos: {len(produtos_encontrados)}")
         
         # Adicionar todos os produtos encontrados
         if produtos_encontrados:
             data['produtos'] = produtos_encontrados
+            logger.detalhes_produtos(produtos_encontrados, data.get('numero'))
+            logger.detalhes_linhas_processadas(len(linhas_processadas), len(lines))
         else:
             # Se n├úo encontrou produtos, garantir que a lista est├í vazia
             data['produtos'] = []
+            logger.warning("Nenhum produto encontrado na seção de produtos!")
+            logger.detalhes_linhas_processadas(0, len(lines))
     else:
         # Se n├úo encontrou se├º├úo de produtos, garantir que a lista est├í vazia
         data['produtos'] = []
+        logger.warning("Seção 'DADOS DO PRODUTO' não encontrada no texto!")
     
     return data
 
@@ -487,6 +787,9 @@ def extract_from_pdf(pdf_path: str, progress_callback=None) -> List[Dict]:
     Returns:
         Lista de dicion├írios com os dados extra├¡dos de cada recibo
     """
+    logger.separador("EXTRACTION FROM PDF")
+    logger.info(f"Processando arquivo: {pdf_path}")
+    
     if progress_callback:
         progress_callback(0, 0, "Extraindo texto do PDF...")
     text = extract_text_from_pdf(pdf_path, progress_callback)
@@ -494,77 +797,208 @@ def extract_from_pdf(pdf_path: str, progress_callback=None) -> List[Dict]:
     if progress_callback:
         progress_callback(0, 0, "Processando recibos...")
     
-    # Detectar m├║ltiplos recibos (cada recibo come├ºa com "N┬║")
-    # Dividir o texto em se├º├Áes de recibos
+    logger.info("Procurando recibos no texto extraído...")
+    
+    # Detectar múltiplos recibos usando múltiplos critérios
     receipts = []
     
-    # Procurar por todos os n├║meros de recibo no texto
-    numero_matches = list(re.finditer(r'N┬║\s*:?\s*(\d+)', text, re.IGNORECASE))
+    # Critério 1: Procurar por padrão "RECIBO DE VENDA" seguido de data (mais confiável)
+    # Formato: "RECIBO DE VENDA DD/MM/YYYY HH:MM:SS"
+    recibo_pattern = r'RECIBO\s+DE\s+VENDA\s+\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}'
+    recibo_matches = list(re.finditer(recibo_pattern, text, re.IGNORECASE))
     
-    total_recibos = len(numero_matches) if numero_matches else 1
+    # Critério 2: Procurar por todos os números de recibo no texto (padrão "Nº", "N°", etc.)
+    # Tentar múltiplas variações do caractere "º"
+    numero_patterns = [
+        r'N[º°]\s*:?\s*(\d+)',  # Nº ou N°
+        r'N\.\s*:?\s*(\d+)',     # N.
+        r'Numero\s*:?\s*(\d+)',  # Numero
+        r'Número\s*:?\s*(\d+)',  # Número
+    ]
+    numero_matches = []
+    for pattern in numero_patterns:
+        matches = list(re.finditer(pattern, text, re.IGNORECASE))
+        numero_matches.extend(matches)
     
-    if len(numero_matches) == 0:
-        # Nenhum recibo encontrado, tentar processar como um ├║nico recibo
-        if progress_callback:
-            progress_callback(1, 1, "Processando recibo ├║nico...")
-        data = extract_receipt_data(text)
-        data = _enhance_with_tables(pdf_path, data, progress_callback)
-        if data.get('numero') or data.get('produtos'):
-            receipts.append(data)
+    # Remover duplicatas (mesma posição)
+    numero_matches = list({m.start(): m for m in numero_matches}.values())
+    numero_matches.sort(key=lambda m: m.start())
+    
+    # Critério 3: Procurar por padrão "Página X de Y" para identificar início de novos recibos
+    # Se o padrão "Página 1 de" aparece múltiplas vezes, pode ser múltiplos recibos
+    pagina_pattern = r'P[áa]gina\s+1\s+de\s+\d+'
+    pagina_matches = list(re.finditer(pagina_pattern, text, re.IGNORECASE))
+    
+    # Decidir qual critério usar
+    all_positions = []
+    
+    # Se encontrou padrão "RECIBO DE VENDA", usar ele (mais confiável)
+    if recibo_matches:
+        logger.info(f"Encontrados {len(recibo_matches)} recibos pelo padrão 'RECIBO DE VENDA'")
+        for match in recibo_matches:
+            # Procurar número do recibo após o padrão (próximas 300 caracteres)
+            texto_apos = text[match.end():match.end()+300]
+            numero_apos = None
+            for pattern in numero_patterns:
+                numero_match = re.search(pattern, texto_apos, re.IGNORECASE)
+                if numero_match:
+                    numero_apos = numero_match.group(1) if numero_match.groups() else None
+                    break
+            
+            all_positions.append({
+                'pos': match.start(),
+                'tipo': 'RECIBO',
+                'numero': numero_apos,
+                'match': match
+            })
+    # Se não encontrou "RECIBO DE VENDA", mas encontrou padrões "Nº", usar eles
+    elif numero_matches:
+        logger.info(f"Encontrados {len(numero_matches)} recibos pelo padrão 'Nº'")
+        for match in numero_matches:
+            numero_recibo = match.group(1) if match.groups() else None
+            all_positions.append({
+                'pos': match.start(),
+                'tipo': 'Nº',
+                'numero': numero_recibo,
+                'match': match
+            })
+    # Se ainda não encontrou, tentar padrão de páginas
+    elif len(pagina_matches) > 1:
+        logger.info(f"Encontradas {len(pagina_matches)} ocorrências de 'Página 1 de X', possivelmente múltiplos recibos")
+        for match in pagina_matches:
+            all_positions.append({
+                'pos': match.start(),
+                'tipo': 'PÁGINA',
+                'numero': None,
+                'match': match
+            })
+    
+    # Ordenar por posição no texto
+    all_positions.sort(key=lambda x: x['pos'])
+    total_recibos = len(all_positions) if all_positions else 1
+    logger.info(f"Total de recibos encontrados: {total_recibos}")
+    
+    if len(all_positions) == 0:
+        # Nenhum padrão encontrado, tentar detectar por divisão de páginas
+        logger.warning("Nenhum padrão claro encontrado, tentando detectar por páginas...")
+        
+        # Verificar se há múltiplas páginas no PDF
+        with pdfplumber.open(pdf_path) as pdf:
+            total_pages = len(pdf.pages)
+            logger.info(f"PDF tem {total_pages} páginas")
+            
+            # Se tem mais de 1 página, tentar processar cada página separadamente
+            if total_pages > 1:
+                logger.info(f"Processando cada página como um recibo separado...")
+                texto_por_pagina = text.split('\n')
+                # Dividir texto por páginas (aproximadamente)
+                caracteres_por_pagina = len(text) // total_pages
+                
+                for page_num in range(total_pages):
+                    start_pos = page_num * caracteres_por_pagina
+                    end_pos = (page_num + 1) * caracteres_por_pagina if page_num < total_pages - 1 else len(text)
+                    
+                    if progress_callback:
+                        progress_callback(page_num + 1, total_pages, f"Processando página {page_num + 1} de {total_pages}...")
+                    
+                    page_text = text[start_pos:end_pos]
+                    
+                    # Extrair dados da página
+                    data = extract_receipt_data(page_text)
+                    
+                    # Adicionar número de página como identificador
+                    if not data.get('numero'):
+                        data['numero'] = f"PAGINA_{page_num + 1}"
+                    
+                    if data.get('produtos') or data.get('vendedor'):
+                        receipts.append(data)
+                        logger.info(f"Página {page_num + 1}: {len(data.get('produtos', []))} produtos encontrados")
+            else:
+                # Apenas 1 página, processar como recibo único
+                logger.warning("Apenas 1 página encontrada, processando como recibo único...")
+                if progress_callback:
+                    progress_callback(1, 1, "Processando recibo único...")
+                data = extract_receipt_data(text)
+                data = _enhance_with_tables(pdf_path, data, progress_callback)
+                if data.get('numero') or data.get('produtos'):
+                    receipts.append(data)
     else:
         # Processar cada recibo separadamente
-        for i, match in enumerate(numero_matches):
+        logger.info(f"Processando {total_recibos} recibos separadamente...")
+        for i, recibo_info in enumerate(all_positions):
+            numero_recibo = recibo_info.get('numero')
+            start_pos = recibo_info['pos']
+            tipo_recibo = recibo_info['tipo']
+            
+            logger.info(f"Processando recibo {i + 1}/{total_recibos}: Tipo={tipo_recibo}, Nº={numero_recibo}")
+            
             if progress_callback:
                 progress_callback(i + 1, total_recibos, f"Processando recibo {i + 1} de {total_recibos}...")
             
-            start_pos = match.start()
-            
-            # Determinar fim do recibo (in├¡cio do pr├│ximo ou fim do texto)
-            if i + 1 < len(numero_matches):
-                end_pos = numero_matches[i + 1].start()
+            # Determinar fim do recibo (início do próximo ou fim do texto)
+            if i + 1 < len(all_positions):
+                end_pos = all_positions[i + 1]['pos']
             else:
                 end_pos = len(text)
             
-            # Extrair se├º├úo do recibo - garantir que est├í completamente isolada
+            # Extrair seção do recibo - garantir que está completamente isolada
             receipt_text = text[start_pos:end_pos]
+            logger.debug(f"Recibo {i + 1}: Texto extraído tem {len(receipt_text)} caracteres")
             
-            # Extrair n├║mero do recibo para valida├º├úo
-            numero_recibo = match.group(1) if match.groups() else None
+            # Limpar o texto para garantir que não há resíduos de outros recibos
+            # Procurar por marcadores de fim de recibo (PAGAMENTO, TOTAIS) antes do próximo recibo
+            if i + 1 < len(all_positions):
+                # Procurar por padrões que indiquem fim do recibo atual
+                # Procurar por "PAGAMENTO" ou "TOTAIS" que venham antes do próximo recibo
+                texto_antes_proximo = text[start_pos:end_pos]
+                
+                # Procurar por marcadores de fim
+                fim_markers = ['PAGAMENTO', 'TOTAIS', 'TOTAL DE MERCADORIAS']
+                ultimo_fim = -1
+                
+                for marker in fim_markers:
+                    # Procurar todas as ocorrências do marcador
+                    marker_pattern = re.compile(re.escape(marker), re.IGNORECASE)
+                    for marker_match in marker_pattern.finditer(texto_antes_proximo):
+                        marker_pos = marker_match.end()
+                        # Verificar se este marcador está mais próximo do fim que o último encontrado
+                        if marker_pos > ultimo_fim and marker_pos < len(texto_antes_proximo) - 100:
+                            # Verificar se depois deste marcador há mais conteúdo do recibo (linhas de pagamento)
+                            texto_depois_marker = texto_antes_proximo[marker_pos:]
+                            # Se tem mais de 200 caracteres depois, pode ser que ainda seja parte do recibo
+                            if len(texto_depois_marker) < 500:
+                                ultimo_fim = marker_pos
+                
+                # Se encontrou um marcador de fim válido, usar ele
+                if ultimo_fim > 0:
+                    # Buscar próxima ocorrência de "RECIBO DE VENDA" ou "Página 1" após o fim
+                    proximo_inicio = texto_antes_proximo[ultimo_fim:].find('RECIBO DE VENDA')
+                    if proximo_inicio > 0:
+                        receipt_text = texto_antes_proximo[:ultimo_fim + proximo_inicio]
+                    elif proximo_inicio == -1:
+                        # Procurar por "Página 1" que indica início do próximo recibo
+                        proximo_inicio = re.search(r'P[áa]gina\s+1\s+de', texto_antes_proximo[ultimo_fim:], re.IGNORECASE)
+                        if proximo_inicio:
+                            receipt_text = texto_antes_proximo[:ultimo_fim + proximo_inicio.start()]
             
-            # Limpar o texto para garantir que n├úo h├í res├¡duos de outros recibos
-            # Mas N├âO remover se ainda n├úo processamos os produtos
-            # Apenas remover se encontrarmos claramente o in├¡cio do pr├│ximo recibo
-            if i + 1 < len(numero_matches):
-                # Procurar por qualquer refer├¬ncia ao pr├│ximo recibo
-                next_numero = numero_matches[i+1].group(1)
-                # Procurar por padr├Áes que indiquem in├¡cio de novo recibo
-                # Mas apenas se vier DEPOIS de "PAGAMENTO" ou "TOTAIS" (fim do recibo atual)
-                patterns_to_check = [
-                    f"\nN┬║ {next_numero}",
-                    f"\nN┬║: {next_numero}",
-                    f"\nN┬║{next_numero}",
-                ]
-                for pattern in patterns_to_check:
-                    next_numero_pos = receipt_text.find(pattern)
-                    if next_numero_pos > 0:
-                        # Verificar se vem depois de indicadores de fim de recibo
-                        texto_antes = receipt_text[:next_numero_pos]
-                        if any(marker in texto_antes.upper() for marker in ['PAGAMENTO', 'TOTAIS', 'TOTAL DE MERCADORIAS']):
-                            receipt_text = receipt_text[:next_numero_pos]
-                            break
-            
-            # Extrair dados do recibo APENAS do texto desta se├º├úo isolada
-            # Criar um novo dicion├írio limpo para este recibo
+            # Extrair dados do recibo APENAS do texto desta seção isolada
+            # Criar um novo dicionário limpo para este recibo
+            logger.debug(f"Recibo {i + 1}: Extraindo dados do texto...")
             data = extract_receipt_data(receipt_text)
             
-            # Garantir que o n├║mero do recibo est├í correto e for├ºar
+            # Garantir que o número do recibo está correto e forçar
             if numero_recibo:
                 data['numero'] = numero_recibo
+            elif not data.get('numero'):
+                # Se não tem número, usar índice do recibo
+                data['numero'] = f"RECIBO_{i + 1}"
             
             # Validar que os produtos extra├¡dos pertencem a este recibo
             # Se n├úo h├í produtos, garantir que a lista est├í vazia
             if 'produtos' not in data:
                 data['produtos'] = []
+            
+            logger.debug(f"Recibo {i + 1}: Produtos encontrados antes da validação: {len(data.get('produtos', []))}")
             
             # Validar produtos: garantir que t├¬m dados v├ílidos e n├úo s├úo duplicados
             produtos_validos = []
@@ -586,6 +1020,17 @@ def extract_from_pdf(pdf_path: str, progress_callback=None) -> List[Dict]:
             
             data['produtos'] = produtos_validos
             
+            logger.info(f"Recibo {i + 1}: {len(produtos_validos)} produtos válidos após validação")
+            
+            # Log detalhado dos produtos que serão enviados para processamento
+            if produtos_validos:
+                logger.debug(f"Recibo {i + 1}: Produtos que serão processados:")
+                for pidx, produto in enumerate(produtos_validos, 1):
+                    logger.debug(f"  Produto {pidx} para processar:")
+                    logger.debug(f"    Descrição original: '{produto.get('descricao', '')}'")
+                    logger.debug(f"    Quantidade original: '{produto.get('quantidade', '')}'")
+                    logger.debug(f"    Valor Unitário original: '{produto.get('valor_unitario', '')}'")
+            
             # N├âO usar _enhance_with_tables para m├║ltiplos recibos
             # pois pode misturar produtos entre recibos
             # Apenas usar extra├º├úo de texto que j├í est├í isolada por se├º├úo
@@ -593,8 +1038,18 @@ def extract_from_pdf(pdf_path: str, progress_callback=None) -> List[Dict]:
             # Adicionar apenas se tiver dados v├ílidos
             if data.get('numero') or data.get('produtos') or data.get('vendedor'):
                 receipts.append(data)
+                logger.info(f"Recibo {i + 1}: Adicionado à lista de recibos processados")
+            else:
+                logger.warning(f"Recibo {i + 1}: Não foi adicionado (sem dados válidos)")
     
-    return receipts if receipts else [extract_receipt_data(text)]
+    logger.separador("FIM DA EXTRAÇÃO")
+    logger.info(f"Total de recibos processados com sucesso: {len(receipts)}")
+    
+    if not receipts:
+        logger.warning("Nenhum recibo processado com sucesso, tentando extrair como recibo único...")
+        return [extract_receipt_data(text)]
+    
+    return receipts
 
 
 def _enhance_with_tables(pdf_path: str, data: Dict, text_start: int = 0, text_end: int = None, progress_callback=None) -> Dict:
@@ -719,12 +1174,54 @@ def _enhance_with_tables(pdf_path: str, data: Dict, text_start: int = 0, text_en
                                         produtos_encontrados.append(produto)
                             
                             # Se encontrou produtos na tabela, usar apenas se n├úo houver produtos extra├¡dos do texto
-                            # ou se a tabela encontrou mais produtos (mais confi├ível)
+                            # ou se a tabela encontrou mais produtos COM VALORES UNIT├üRIOS (mais confi├ível)
                             if produtos_encontrados:
                                 produtos_texto = data.get('produtos', [])
-                                # Se tabela encontrou produtos e h├í mais produtos na tabela ou n├úo h├í produtos do texto
-                                if len(produtos_encontrados) > len(produtos_texto) or not produtos_texto:
+                                
+                                logger.debug(f"=== _enhance_with_tables: Produtos encontrados ===")
+                                logger.debug(f"  Produtos do TEXTO: {len(produtos_texto)}")
+                                for pidx, p in enumerate(produtos_texto, 1):
+                                    logger.debug(f"    Texto {pidx}: Desc='{p.get('descricao', '')[:50]}', Qtd='{p.get('quantidade', '')}', Valor='{p.get('valor_unitario', '')}'")
+                                
+                                logger.debug(f"  Produtos da TABELA: {len(produtos_encontrados)}")
+                                for pidx, p in enumerate(produtos_encontrados, 1):
+                                    logger.debug(f"    Tabela {pidx}: Desc='{p.get('descricao', '')[:50]}', Qtd='{p.get('quantidade', '')}', Valor='{p.get('valor_unitario', '')}'")
+                                
+                                # Validar qualidade dos produtos: contar produtos com valor unitário
+                                produtos_texto_com_valor = sum(1 for p in produtos_texto if p.get('valor_unitario', '').strip())
+                                produtos_tabela_com_valor = sum(1 for p in produtos_encontrados if p.get('valor_unitario', '').strip())
+                                
+                                # Validar se produtos da tabela têm descrições válidas (sem caracteres duplicados)
+                                produtos_tabela_validos = sum(1 for p in produtos_encontrados 
+                                                             if not any(c1 == c2 for c1, c2 in zip(p.get('descricao', ''), p.get('descricao', '')[1:]) 
+                                                                      if c1.isalpha() and c2.isalpha()))
+                                
+                                # DECISÃO: Substituir apenas se:
+                                # 1. Não há produtos do texto OU
+                                # 2. Tabela tem mais produtos COM VALOR UNITÁRIO E descrições válidas
+                                deve_substituir = False
+                                razao = ""
+                                
+                                if not produtos_texto:
+                                    deve_substituir = True
+                                    razao = "Não há produtos do texto"
+                                elif produtos_tabela_com_valor > produtos_texto_com_valor and produtos_tabela_validos == len(produtos_encontrados):
+                                    deve_substituir = True
+                                    razao = f"Tabela tem {produtos_tabela_com_valor} produtos com valor unitário (Texto tem {produtos_texto_com_valor})"
+                                elif produtos_texto_com_valor == 0 and produtos_tabela_com_valor > 0 and produtos_tabela_validos == len(produtos_encontrados):
+                                    # Texto não tem produtos com valor, tabela tem
+                                    deve_substituir = True
+                                    razao = f"Texto não tem produtos com valor unitário, tabela tem {produtos_tabela_com_valor}"
+                                
+                                if deve_substituir:
+                                    logger.warning(f"  ⚠ SUBSTITUINDO produtos do TEXTO pelos produtos da TABELA!")
+                                    logger.warning(f"    Razão: {razao}")
                                     data['produtos'] = produtos_encontrados
+                                else:
+                                    logger.debug(f"  ✓ Mantendo produtos do TEXTO (não substituindo pela tabela)")
+                                    logger.debug(f"    Razão: Texto tem {produtos_texto_com_valor} produtos com valor, Tabela tem {produtos_tabela_com_valor}")
+                                    if produtos_tabela_validos < len(produtos_encontrados):
+                                        logger.debug(f"    Tabela tem {len(produtos_encontrados) - produtos_tabela_validos} produtos com descrições inválidas (caracteres duplicados)")
                                 # Caso contr├írio, manter produtos do texto (j├í foram extra├¡dos corretamente)
                                 break
     except Exception:

@@ -60,4 +60,11 @@ __pycache__/
 Sistema-Bruno-Distribuicao/
 Sistema-Bruno-Distribuicao.zip
 *.exe
+*.zip
 
+# Logs do sistema
+logs/
+*.log
+
+# Arquivos temporários de desenvolvimento
+*.zip

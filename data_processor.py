@@ -5,6 +5,20 @@ import pandas as pd
 import re
 from typing import Dict, List, Optional, Tuple
 
+# Importar logger
+try:
+    from logger import get_logger
+    logger = get_logger()
+except ImportError:
+    # Se logger não estiver disponível, criar um logger silencioso
+    class DummyLogger:
+        def info(self, *args, **kwargs): pass
+        def debug(self, *args, **kwargs): pass
+        def warning(self, *args, **kwargs): pass
+        def error(self, *args, **kwargs): pass
+        def separador(self, *args, **kwargs): pass
+    logger = DummyLogger()
+
 
 def extract_mg_from_product(product_name: str) -> float:
     """
@@ -118,10 +132,12 @@ def normalize_data(receipt_data: Dict) -> pd.DataFrame:
     Returns:
         DataFrame pandas com os dados normalizados
     """
+    logger.debug("Normalizando dados do recibo...")
     rows = []
     
     # Se não houver produtos, criar uma linha com dados do recibo
     if not receipt_data.get('produtos'):
+        logger.warning("Nenhum produto encontrado no recibo!")
         rows.append({
             'Nº Recibo': receipt_data.get('numero', ''),
             'Vendedor': receipt_data.get('vendedor', ''),
@@ -132,20 +148,32 @@ def normalize_data(receipt_data: Dict) -> pd.DataFrame:
         })
     else:
         # Criar uma linha para cada produto
-        for produto in receipt_data['produtos']:
+        logger.debug(f"Normalizando {len(receipt_data['produtos'])} produtos...")
+        for idx, produto in enumerate(receipt_data['produtos'], 1):
+            descricao_original = produto.get('descricao', '')
+            quantidade_original = produto.get('quantidade', '')
+            valor_original = produto.get('valor_unitario', '')
+            
             # Limpar descrição do produto
-            descricao_limpa = clean_product_description(produto.get('descricao', ''))
+            descricao_limpa = clean_product_description(descricao_original)
+            
+            # Log de transformação
+            if descricao_limpa != descricao_original:
+                logger.debug(f"Produto {idx}: Descrição limpa - Original: '{descricao_original}' -> Limpa: '{descricao_limpa}'")
             
             rows.append({
                 'Nº Recibo': receipt_data.get('numero', ''),
                 'Vendedor': receipt_data.get('vendedor', ''),
                 'Cliente': receipt_data.get('cliente', ''),
                 'Descrição do Produto': descricao_limpa,
-                'Quantidade': produto.get('quantidade', ''),
-                'Valor Unitário': produto.get('valor_unitario', '')
+                'Quantidade': quantidade_original,
+                'Valor Unitário': valor_original
             })
+            
+            logger.debug(f"Produto {idx} normalizado: Qtd='{quantidade_original}', Valor='{valor_original}', Desc='{descricao_limpa[:50]}...'")
     
     df = pd.DataFrame(rows)
+    logger.debug(f"DataFrame normalizado criado com {len(df)} linhas")
     return df
 
 
@@ -159,6 +187,15 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame limpo
     """
+    logger.debug(f"Limpando dados - DataFrame tem {len(df)} linhas ANTES da limpeza")
+    
+    # Log dos dados ANTES da limpeza (primeiras 5 linhas)
+    if not df.empty:
+        logger.debug("Dados ANTES da limpeza (primeiras 5 linhas):")
+        for idx in range(min(5, len(df))):
+            row = df.iloc[idx]
+            logger.debug(f"  Linha {idx}: Qtd='{row.get('Quantidade', '')}', Valor='{row.get('Valor Unitário', '')}', Desc='{row.get('Descrição do Produto', '')[:50]}...'")
+    
     # Remover espaços extras
     for col in df.columns:
         if df[col].dtype == 'object':
@@ -170,14 +207,28 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     if 'Quantidade' in df.columns:
         # Manter quantidade como string original (formato brasileiro: 2,000)
         # Apenas limpar espaços e valores inválidos, mas preservar zeros válidos
+        quantidade_antes = df['Quantidade'].copy()
         df['Quantidade'] = df['Quantidade'].astype(str).str.strip()
         df['Quantidade'] = df['Quantidade'].replace('nan', '').replace('None', '')
+        # Log se houve mudanças
+        mudancas_qtd = (quantidade_antes.astype(str) != df['Quantidade']).any()
+        if mudancas_qtd:
+            logger.debug(f"Mudanças detectadas na coluna Quantidade durante limpeza")
     
     if 'Valor Unitário' in df.columns:
         # Converter formato brasileiro (1.080,00) para float
+        valor_antes = df['Valor Unitário'].copy().astype(str)
         df['Valor Unitário'] = df['Valor Unitário'].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
         df['Valor Unitário'] = pd.to_numeric(df['Valor Unitário'], errors='coerce').fillna(0.0)
+        
+        # Log de conversão de valores
+        for idx in range(min(5, len(df))):
+            valor_antigo = valor_antes.iloc[idx] if idx < len(valor_antes) else ''
+            valor_novo = df['Valor Unitário'].iloc[idx]
+            if str(valor_antigo) != str(valor_novo):
+                logger.debug(f"Linha {idx}: Valor convertido - Original: '{valor_antigo}' -> Numérico: {valor_novo}")
     
+    logger.debug(f"Limpando dados - DataFrame tem {len(df)} linhas DEPOIS da limpeza")
     return df
 
 
@@ -192,8 +243,18 @@ def post_validate_and_clean(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame com linhas inválidas removidas
     """
+    logger.debug(f"Pós-validação - DataFrame tem {len(df)} linhas ANTES da validação")
+    
     if df.empty:
+        logger.warning("DataFrame vazio na pós-validação!")
         return df
+    
+    # Log das primeiras linhas ANTES da validação
+    if not df.empty:
+        logger.debug("Dados ANTES da pós-validação (primeiras 5 linhas):")
+        for idx in range(min(5, len(df))):
+            row = df.iloc[idx]
+            logger.debug(f"  Linha {idx}: Qtd='{row.get('Quantidade', '')}', Valor={row.get('Valor Unitário', '')}, Desc='{row.get('Descrição do Produto', '')[:50]}...'")
     
     # Criar cópia para não modificar o original
     df_clean = df.copy()
@@ -231,11 +292,31 @@ def post_validate_and_clean(df: pd.DataFrame) -> pd.DataFrame:
     # Linha é válida se tem descrição E (tem quantidade OU tem valor)
     linhas_validas = tem_descricao & (tem_quantidade | tem_valor)
     
+    # Log de linhas removidas
+    linhas_removidas = ~linhas_validas
+    if linhas_removidas.any():
+        num_removidas = linhas_removidas.sum()
+        logger.warning(f"Removendo {num_removidas} linha(s) inválida(s) na pós-validação:")
+        for idx in df_clean[linhas_removidas].index:
+            row = df_clean.iloc[idx]
+            logger.warning(f"  Linha {idx} removida: Qtd='{row.get('Quantidade', '')}', Valor={row.get('Valor Unitário', '')}, Desc='{row.get('Descrição do Produto', '')[:50]}...'")
+            logger.warning(f"    - Tem descrição: {tem_descricao.iloc[idx]}")
+            logger.warning(f"    - Tem quantidade: {tem_quantidade.iloc[idx]}")
+            logger.warning(f"    - Tem valor: {tem_valor.iloc[idx]}")
+    
     # Filtrar DataFrame mantendo apenas linhas válidas
     df_clean = df_clean[linhas_validas].copy()
     
     # Resetar índice
     df_clean = df_clean.reset_index(drop=True)
+    
+    logger.debug(f"Pós-validação - DataFrame tem {len(df_clean)} linhas DEPOIS da validação")
+    
+    # Log das linhas que sobraram
+    if not df_clean.empty:
+        logger.debug("Dados DEPOIS da pós-validação (todas as linhas restantes):")
+        for idx, row in df_clean.iterrows():
+            logger.debug(f"  Linha {idx}: Qtd='{row.get('Quantidade', '')}', Valor={row.get('Valor Unitário', '')}, Desc='{row.get('Descrição do Produto', '')[:50]}...'")
     
     return df_clean
 
@@ -267,19 +348,42 @@ def process_multiple_receipts(receipts_data: List[Dict]) -> pd.DataFrame:
     Returns:
         DataFrame pandas com todos os recibos processados
     """
+    logger.separador("PROCESSAMENTO DE MÚLTIPLOS RECIBOS")
+    logger.info(f"Processando {len(receipts_data)} recibos...")
+    
     all_dfs = []
     
-    for receipt_data in receipts_data:
+    for idx, receipt_data in enumerate(receipts_data, 1):
+        recibo_num = receipt_data.get('numero', 'N/A')
+        num_produtos = len(receipt_data.get('produtos', []))
+        logger.debug(f"Processando recibo {idx}/{len(receipts_data)}: Nº {recibo_num} - {num_produtos} produtos")
         df = process_receipt_data(receipt_data)  # Já inclui post_validate_and_clean
         if not df.empty:
             all_dfs.append(df)
+            logger.debug(f"Recibo {idx} processado: DataFrame tem {len(df)} linhas após processamento")
+        else:
+            logger.warning(f"Recibo {idx} resultou em DataFrame vazio após processamento!")
     
     if all_dfs:
+        logger.info(f"Concatenando {len(all_dfs)} DataFrames...")
+        total_linhas_antes = sum(len(df) for df in all_dfs)
+        logger.debug(f"Total de linhas antes da concatenação: {total_linhas_antes}")
+        
         combined_df = pd.concat(all_dfs, ignore_index=True)
+        logger.debug(f"DataFrame combinado criado com {len(combined_df)} linhas")
+        
         # Aplicar validação final no DataFrame combinado (caso alguma linha tenha sido perdida na concatenação)
+        linhas_antes_validacao = len(combined_df)
         combined_df = post_validate_and_clean(combined_df)
+        linhas_depois_validacao = len(combined_df)
+        
+        if linhas_antes_validacao != linhas_depois_validacao:
+            logger.warning(f"Validação final removeu {linhas_antes_validacao - linhas_depois_validacao} linha(s) do DataFrame combinado")
+        
+        logger.info(f"DataFrame final tem {len(combined_df)} linhas que serão exibidas na interface")
         return combined_df
     else:
+        logger.error("Nenhum DataFrame válido para concatenar! Retornando DataFrame vazio.")
         return pd.DataFrame()
 
 
