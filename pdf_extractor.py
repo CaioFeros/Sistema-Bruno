@@ -1,7 +1,30 @@
 ﻿"""
-M├│dulo para extra├º├úo de dados de recibos de venda de PDFs.
+Módulo para extração de dados de recibos de venda de PDFs.
 """
-import pdfplumber
+import sys
+import os
+
+# Tentar importar pdfplumber com tratamento de erro melhorado
+try:
+    import pdfplumber
+except ImportError as e:
+    # Se for executável standalone, tentar adicionar _internal ao path
+    if getattr(sys, 'frozen', False):
+        base_path = os.path.dirname(sys.executable)
+        internal_path = os.path.join(base_path, '_internal')
+        if os.path.exists(internal_path) and internal_path not in sys.path:
+            sys.path.insert(0, internal_path)
+        try:
+            import pdfplumber
+        except ImportError:
+            raise ImportError(
+                f"Não foi possível importar pdfplumber.\n"
+                f"Erro original: {e}\n"
+                f"Verifique se pdfplumber está na pasta _internal do executável."
+            ) from e
+    else:
+        raise
+
 import re
 from typing import Dict, List, Optional
 
