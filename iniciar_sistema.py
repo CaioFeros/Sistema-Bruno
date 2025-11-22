@@ -13,10 +13,21 @@ import os
 if getattr(sys, 'frozen', False):
     base_path = os.path.dirname(sys.executable)
     internal_path = os.path.join(base_path, '_internal')
+    
+    # Adicionar _internal ao path PRIMEIRO (antes de qualquer importação)
     if os.path.exists(internal_path):
-        # Adicionar _internal ao path PRIMEIRO
         if internal_path not in sys.path:
             sys.path.insert(0, internal_path)
+    
+    # Adicionar também o diretório base (onde está o executável)
+    if base_path not in sys.path:
+        sys.path.insert(0, base_path)
+    
+    # Adicionar subpastas importantes do numpy/pandas se existirem
+    for subfolder in ['numpy', 'pandas', 'pandas.libs', 'numpy.libs', 'numpy.core', 'pandas._libs']:
+        subfolder_path = os.path.join(internal_path, subfolder) if os.path.exists(internal_path) else os.path.join(base_path, subfolder)
+        if os.path.exists(subfolder_path) and subfolder_path not in sys.path:
+            sys.path.insert(0, subfolder_path)
 
 def verificar_python():
     """Verifica se a versão do Python é compatível."""
