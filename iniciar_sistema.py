@@ -162,7 +162,7 @@ def main():
             # Adicionar no início do path para ter prioridade
             sys.path.insert(0, internal_path)
             # Também adicionar subpastas importantes
-            for subfolder in ['numpy', 'pandas', 'pandas.libs', 'numpy.libs']:
+            for subfolder in ['numpy', 'pandas', 'pdfplumber', 'pandas.libs', 'numpy.libs', 'pdfminer', 'PIL']:
                 subfolder_path = os.path.join(internal_path, subfolder)
                 if os.path.exists(subfolder_path):
                     sys.path.insert(0, subfolder_path)
